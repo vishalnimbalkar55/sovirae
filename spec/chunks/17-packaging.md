@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
+**Status: development in progress (macOS first).** This topic is synchronized with the full specification; original numbering is preserved.
 
 1. Produce native packages for every validated OS/architecture: Windows installer, signed/notarized macOS app where distributed, and a chosen Linux package format. Test installation on clean machines.
 2. Bundle the Tauri shell, Rust/native TTS worker, native messaging host, required ONNX/audio libraries, and notices. Do not bundle Python, Torch, Node.js as a runtime, an LLM, or unverified GPU libraries.

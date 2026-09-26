@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
+**Status: development in progress (macOS first).** This topic is synchronized with the full specification; original numbering is preserved.
 
 All numbers below are proposed engineering targets. No benchmark has been run for this planning task. Final supported hardware requires measurements and a published compatibility table.
 

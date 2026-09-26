@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Sovirae",
+  "version": "0.1.0",
+  "identifier": "com.sovirae.desktop",
+  "build": {
+    "beforeDevCommand": "cargo build -q --release -p speakit-kokoro-worker && npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "cargo build -q --release -p speakit-kokoro-worker && npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Sovirae",
+        "url": "index.html",
+        "width": 1080,
+        "height": 740,
+        "minWidth": 860,
+        "minHeight": 620,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "visible": false
+      },
+      {
+        "label": "player",
+        "title": "Sovirae player",
+        "url": "player.html",
+        "width": 520,
+        "height": 112,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "resizable": false,
+        "focus": false,
+        "acceptFirstMouse": true,
+        "shadow": false,
+        "visibleOnAllWorkspaces": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "category": "Productivity",
+    "shortDescription": "Local text-to-speech",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "macOS": { "minimumSystemVersion": "13.0" }
+  }
+}

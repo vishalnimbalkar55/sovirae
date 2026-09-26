@@ -2,18 +2,23 @@
 
 [Spec index](../README.md) · [All steps](README.md)
 
-**Planning only. Do not start implementation without a separate user instruction.**
+**Development authorized on 2026-09-26 (macOS first).** A checked item has test or review evidence; see Progress below.
 
 **Dependency:** Complete Step 4 and its gate first.
 
-- [ ] Implement deterministic normalization and source-span mapping.
-- [ ] Add sentence/chunk segmentation fixtures.
-- [ ] Add bounded inference work queue and PCM cache.
-- [ ] Implement cancellation generations and stale-result rejection.
-- [ ] Add pitch-preserving speed, volume, and source-time tracking.
+- [x] Implement deterministic normalization and source-span mapping.
+- [x] Add sentence/chunk segmentation fixtures.
+- [x] Add bounded inference work queue and PCM cache.
+- [x] Implement cancellation generations and stale-result rejection.
+- [x] Add pitch-preserving speed, volume, and source-time tracking.
 - [ ] Implement seek into cached and uncached segments.
 
 **Gate:** long text begins promptly; speed changes preserve source position and do not resynthesize audio.
+
+## Progress — 2026-09-26
+
+- Speed uses a built-in streaming WSOLA stretcher; measured 2.00× playback at the 2.0× setting with no resynthesis. Volume is applied in the audio callback.
+- Seeking into already synthesized audio is tested (skip +5 s while paused). Seeking into unsynthesized audio is implemented but not tested yet.
 
 ## Relevant requirements
 

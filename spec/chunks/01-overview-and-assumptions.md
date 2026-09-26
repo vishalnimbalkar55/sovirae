@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
+**Status: development in progress (macOS first).** This topic is synchronized with the full specification; original numbering is preserved.
 
 Build a beautiful, local text-to-speech application with a floating player and Chrome extension. It should read selected or copied text in a crisp, pleasant voice while leaving enough CPU, GPU, and memory for the user's other work.
 
@@ -25,7 +25,7 @@ Inputs reviewed:
 | Current development workspace | macOS; Windows and Linux require separate native test environments |
 | “No LLM” | No chat model, summarization, rewriting, translation, agent, or cloud language-model dependency; dedicated local neural TTS remains in scope |
 | “Long press control” | Support long-press Ctrl explicitly; also allow Alt and shortcut-only activation |
-| Initial language validation | English US/UK only (confirmed 2026-09-26); other catalog languages only marked supported after testing |
+| Voices and languages | All voices offered by each model and the OS are listed (changed at the user's request on 2026-09-26; earlier English-only). Voices without a stated gender or nameable language appear under "Other". Languages whose phonemizer is a stand-in are labelled "approximate pronunciation"; quality evaluation remains English-first |
 | Default hardware policy | Balanced CPU; optional verified GPU acceleration |
 | New read during playback | Replace current reading; no queue in this release |
 | Distribution | Private native packages for validated target OSes plus unpacked extension first; public distribution later |

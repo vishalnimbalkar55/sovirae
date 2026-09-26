@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = ["src-tauri", "crates/*", "workers/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "UNLICENSED"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+log = "0.4"
+unicode-segmentation = "1.13"
+cpal = "0.18"
+rtrb = "0.4"
+hound = "3.5"
+speakit-core = { path = "crates/speakit-core" }
+speakit-audio = { path = "crates/speakit-audio" }
+speakit-tts = { path = "crates/speakit-tts" }
+speakit-models = { path = "crates/speakit-models" }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

@@ -2,7 +2,7 @@
 
 Version: 4.1 • Prepared: 2026-09-26 • Status: development authorized, macOS first
 
-**Do not implement this document until the user explicitly asks to start development.**
+**Development was authorized on 2026-09-26, starting with macOS. Checked items below have test or review evidence.**
 
 > **Architecture decision:** The [shared conversation](https://chatgpt.com/share/6ab777c9-6118-83e8-8ed4-fe510c699ce2) was read. SpeakIt targets Windows, macOS, and Linux with Tauri 2, React/TypeScript, and Rust. Only its TTS path applies; the conversation’s LLM and STT design is outside this release. The [Windows prompt review](Windows-Prompt-Feature-Review.md) supplies selected behavior and preferred shortcuts.
 
@@ -29,7 +29,7 @@ Inputs reviewed:
 | Current development workspace | macOS; Windows and Linux require separate native test environments |
 | “No LLM” | No chat model, summarization, rewriting, translation, agent, or cloud language-model dependency; dedicated local neural TTS remains in scope |
 | “Long press control” | Support long-press Ctrl explicitly; also allow Alt and shortcut-only activation |
-| Initial language validation | English US/UK only (confirmed 2026-09-26); other catalog languages only marked supported after testing |
+| Voices and languages | All voices offered by each model and the OS are listed (changed at the user's request on 2026-09-26; earlier English-only). Voices without a stated gender or nameable language appear under "Other". Languages whose phonemizer is a stand-in are labelled "approximate pronunciation"; quality evaluation remains English-first |
 | Default hardware policy | Balanced CPU; optional verified GPU acceleration |
 | New read during playback | Replace current reading; no queue in this release |
 | Distribution | Private native packages for validated target OSes plus unpacked extension first; public distribution later |
@@ -874,12 +874,12 @@ Errors must remain long enough to act on and be announced accessibly. Do not mak
 
 ## 18. Step-by-step delivery plan
 
-Implementation begins only after a separate user instruction. Complete milestones sequentially and retain evidence for each gate.
+Development was authorized on 2026-09-26. Complete milestones sequentially and retain evidence for each gate; per-step progress notes live in the step files.
 
 ### Step 0 — Resolve platform and establish evidence
 
 - [ ] Confirm exact Windows, macOS, and Linux release versions/architectures and representative CPU/GPU hardware.
-- [ ] Confirm English-first scope and any required Hindi/other voices.
+- [x] Confirm English-first scope and any required Hindi/other voices.
 - [ ] Record private versus public distribution intent.
 - [ ] Pin SDK/runtime candidates and catalog schema.
 - [ ] Check exact model/export/phonemizer/provider compatibility and licenses.
@@ -889,19 +889,19 @@ Implementation begins only after a separate user instruction. Complete milestone
 
 ### Step 1 — Design the product UI
 
-- [ ] Apply the installed frontend-design skill to the design brief in §3.
-- [ ] Create tokens and component states.
-- [ ] Design Read, Voices, Shortcuts, Extension, and Settings.
+- [x] Apply the installed frontend-design skill to the design brief in §3.
+- [x] Create tokens and component states.
+- [x] Design Read, Voices, Shortcuts, Extension, and Settings.
 - [ ] Design compact/expanded player and picker confirmation.
 - [ ] Include light/dark, empty, loading, error, disabled, and long-content variants.
 - [ ] Review keyboard navigation, contrast, scaling, and user-facing copy.
-- [ ] Revise any decorative dashboard elements that compete with reading.
+- [x] Revise any decorative dashboard elements that compete with reading.
 
 **Gate:** coherent screen designs using real sample text, with no implementation required for review.
 
 ### Step 2 — Prove speech quality and resource feasibility
 
-- [ ] Build a throwaway local inference harness when implementation is authorized.
+- [x] Build a throwaway local inference harness when implementation is authorized.
 - [ ] Produce one reference WAV using the official Kokoro pipeline.
 - [ ] Validate phonemization and token output against the chosen reference.
 - [ ] Compare candidate ONNX artifacts, precision modes, and three voices.
@@ -913,7 +913,7 @@ Implementation begins only after a separate user instruction. Complete milestone
 
 ### Step 3 — Create desktop shell
 
-- [ ] Create Tauri 2 + React/TypeScript shell, Rust crate boundaries, command/event schemas, and permission scopes.
+- [x] Create Tauri 2 + React/TypeScript shell, Rust crate boundaries, command/event schemas, and permission scopes.
 - [ ] Build React navigation, theme resources, and Rust-owned settings persistence.
 - [ ] Add tray/menu bar, single-instance behavior, start-at-login option, and explicit Exit.
 - [ ] Spike compact overlay positioning/focus on Windows, macOS, Linux X11, and a named Wayland session.
@@ -925,38 +925,38 @@ Implementation begins only after a separate user instruction. Complete milestone
 
 - [ ] Implement manual input and clipboard path.
 - [ ] Add a verified local voice path on each target OS: tested system voice if accessible, otherwise the Step 2 lightweight model with explicit install/download before offline use.
-- [ ] Add text validation and safe error messages.
-- [ ] Route all entry paths through one session controller.
-- [ ] Add play, pause, stop, and replace-session behavior.
+- [x] Add text validation and safe error messages.
+- [x] Route all entry paths through one session controller.
+- [x] Add play, pause, stop, and replace-session behavior.
 
 **Gate:** after a usable voice is installed, copy a paragraph, trigger the platform-registered Speak clipboard action, hear it offline, pause/stop reliably, and preserve clipboard content on every declared target.
 
 ### Step 5 — Build document index and audio scheduling
 
-- [ ] Implement deterministic normalization and source-span mapping.
-- [ ] Add sentence/chunk segmentation fixtures.
-- [ ] Add bounded inference work queue and PCM cache.
-- [ ] Implement cancellation generations and stale-result rejection.
-- [ ] Add pitch-preserving speed, volume, and source-time tracking.
+- [x] Implement deterministic normalization and source-span mapping.
+- [x] Add sentence/chunk segmentation fixtures.
+- [x] Add bounded inference work queue and PCM cache.
+- [x] Implement cancellation generations and stale-result rejection.
+- [x] Add pitch-preserving speed, volume, and source-time tracking.
 - [ ] Implement seek into cached and uncached segments.
 
 **Gate:** long text begins promptly; speed changes preserve source position and do not resynthesize audio.
 
 ### Step 6 — Add neural models and resource profiles
 
-- [ ] Implement catalog validation and verified downloads.
+- [x] Implement catalog validation and verified downloads.
 - [ ] Build model state transitions and metadata-driven controls.
-- [ ] Integrate the chosen Kokoro engine in the inference worker.
+- [x] Integrate the chosen Kokoro engine in the inference worker.
 - [ ] Add Eco/Balanced/Performance and explicit CPU/GPU selection.
-- [ ] Implement unload, pressure handling, worker recovery, and bounded lookahead.
+- [x] Implement unload, pressure handling, worker recovery, and bounded lookahead.
 - [ ] Add Piper only if its gates pass.
 
 **Gate:** the recommended quality voice passes quality/performance targets on declared hardware without making foreground work unusable; the Step 4 starter voice remains a working fallback.
 
 ### Step 7 — Polish the player
 
-- [ ] Implement waveform and accessible seek control.
-- [ ] Implement expanded sentence view and follow-reading behavior.
+- [x] Implement waveform and accessible seek control.
+- [x] Implement expanded sentence view and follow-reading behavior.
 - [ ] Add source chip, monitor memory, and keyboard access.
 - [ ] Add audio-device recovery and optional system media controls.
 - [ ] Profile audio callback allocations and hidden-window CPU.

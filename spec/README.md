@@ -1,10 +1,26 @@
 # SpeakIt — Specification in small chunks
 
-**Planning only. No application implementation has started.**
+**Development in progress, macOS first (authorized 2026-09-26).** The product's display name is **Sovirae** (see the [branding spec](Sovirae-Branding-Spec.md)); code identifiers still use `speakit`. No step gate has passed yet; see the progress table below.
 
 The [shared conversation](https://chatgpt.com/share/6ab777c9-6118-83e8-8ed4-fe510c699ce2) establishes the architecture: **Tauri 2 + React/TypeScript + Rust**, with local ONNX TTS. Windows, macOS, and Linux desktop are target platforms. LLM and STT are outside the current product. Read the [architecture](chunks/05-architecture.md) and [Windows prompt feature comparison](Windows-Prompt-Feature-Review.md) for the selected behaviors and shortcuts.
 
 The specification has **24 topic files** and **14 individual delivery steps**. The [complete specification](SpeakIt-Product-Spec.md) remains available for copying. Topic and step files are synchronized extracts; update both representations when requirements change.
+
+## Progress at a glance (2026-09-26)
+
+| Step | State | Evidence |
+|---|---|---|
+| 0 Platform and evidence | Partly done | macOS 15 on Apple M4 and English-only confirmed; licenses and benchmark corpus open |
+| 1 Product UI | Mostly done | Redesigned as Sovirae with the installed design skills; all screens and both player sizes reviewed in light/dark |
+| 2 Speech quality | Started | Kokoro fp32 runs at 0.18–0.20 real-time on CPU; listening and pronunciation checks open |
+| 3 Desktop shell | Mostly built | Tauri shell, tray, shortcuts, settings; focus-on-click limitation found on macOS |
+| 4 Basic local reading | Mostly built | End-to-end test passes; clipboard path awaits a hands-on check |
+| 5 Index and scheduling | Mostly built | 11 text tests, 4 stretcher tests, measured 2.00× at 2.0× |
+| 6 Neural models | Mostly built | Verified Kokoro download and install, isolated worker, 0.92 s warm first audio |
+| 7 Player polish | Partly done | Waveform, accessible seek, expanded sentence view |
+| 8–12 | Not started | — |
+
+A step's checkbox below is ticked only when its gate passes.
 
 ## Small delivery steps
 

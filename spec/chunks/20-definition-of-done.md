@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
+**Status: development in progress (macOS first).** This topic is synchronized with the full specification; original numbering is preserved.
 
 - [ ] Attractive, reviewed UI exists for desktop, player, and extension states.
 - [ ] Clipboard and manual input work offline once a usable voice is installed; a zero-download system fallback is provided only where verified.

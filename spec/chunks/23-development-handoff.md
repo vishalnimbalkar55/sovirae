@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
+**Status: development in progress (macOS first).** This topic is synchronized with the full specification; original numbering is preserved.
 
 The following text may be copied into a future development task. It is not an instruction to start implementation now.
 

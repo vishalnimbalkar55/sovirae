@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
+**Status: development in progress (macOS first).** This topic is synchronized with the full specification; original numbering is preserved.
 
 - No user text, titles, URLs, audio, or voice previews are sent to a server for processing.
 - Network operations are limited to explicit model downloads, catalog refresh, and update checks.

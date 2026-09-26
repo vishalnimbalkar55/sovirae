@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [All steps](README.md)
 
-**Planning only. Do not start implementation without a separate user instruction.**
+**Development authorized on 2026-09-26 (macOS first).** A checked item has test or review evidence; see Progress below.
 
 **Dependency:** Complete Step 12 and its gate first.
 

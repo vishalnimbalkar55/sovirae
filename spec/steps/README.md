@@ -2,7 +2,7 @@
 
 [Spec index](../README.md)
 
-**Planning only.** Each file includes its checklist, dependency, gate, and relevant requirements. Step 13 is optional future work.
+**Development in progress (macOS first).** Each file includes its checklist, dependency, gate, relevant requirements, and dated progress notes. A step is checked here only when its gate passes. Step 13 is optional future work.
 
 - [ ] [Step 0: Resolve platform and establish evidence](00-resolve-platform-and-establish-evidence.md)
 - [ ] [Step 1: Design the product UI](01-design-the-product-ui.md)

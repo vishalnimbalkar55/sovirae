@@ -2,18 +2,23 @@
 
 [Spec index](../README.md) · [All steps](README.md)
 
-**Planning only. Do not start implementation without a separate user instruction.**
+**Development authorized on 2026-09-26 (macOS first).** A checked item has test or review evidence; see Progress below.
 
 **Dependency:** None; resolve these assumptions before development.
 
 - [ ] Confirm exact Windows, macOS, and Linux release versions/architectures and representative CPU/GPU hardware.
-- [ ] Confirm English-first scope and any required Hindi/other voices.
+- [x] Confirm English-first scope and any required Hindi/other voices.
 - [ ] Record private versus public distribution intent.
 - [ ] Pin SDK/runtime candidates and catalog schema.
 - [ ] Check exact model/export/phonemizer/provider compatibility and licenses.
 - [ ] Create benchmark corpus and result template.
 
 **Gate:** written architecture decisions; no vague “GPU supported” claim.
+
+## Progress — 2026-09-26
+
+- macOS 15.1 on Apple M4 (10 cores, 24 GB) is the first build and test machine; Windows and Linux versions are still open.
+- Pinned so far: Tauri 2.11, Rust 1.98, cpal 0.18, React 19, Vite 8. Model catalog schema, licenses, and benchmark corpus are not started.
 
 ## Relevant requirements
 
