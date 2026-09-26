@@ -92,7 +92,7 @@ export default function App() {
         ) : screen === "shortcuts" ? (
           <ShortcutsScreen app={app} />
         ) : screen === "extension" ? (
-          <ExtensionScreen />
+          <ExtensionScreen app={app} />
         ) : (
           <SettingsScreen app={app} />
         )}

@@ -123,6 +123,12 @@ pub struct Settings {
     pub player_topmost: bool,
     pub player_position: Option<(f64, f64)>,
     pub shortcuts: Shortcuts,
+    /// Accept requests from the Chrome extension (spec §13).
+    pub chrome_bridge: bool,
+    /// Extension IDs the user allowed to send text.
+    pub paired_extensions: Vec<String>,
+    /// Read web pages with a voice in the page's language when one exists.
+    pub match_page_language: bool,
 }
 
 impl Default for Settings {
@@ -144,6 +150,9 @@ impl Default for Settings {
             player_topmost: true,
             player_position: None,
             shortcuts: Shortcuts::default(),
+            chrome_bridge: true,
+            paired_extensions: Vec::new(),
+            match_page_language: true,
         }
     }
 }
@@ -163,6 +172,8 @@ impl Settings {
         if !self.start_at_login {
             self.start_minimized = false;
         }
+        self.paired_extensions.retain(|id| id.len() == 32 && id.bytes().all(|b| (b'a'..=b'p').contains(&b)));
+        self.paired_extensions.dedup();
         self
     }
 }

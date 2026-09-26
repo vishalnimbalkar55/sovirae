@@ -41,6 +41,7 @@ pub fn speak_text(state: State<'_, AppState>, text: String, truncate: Option<boo
             language_hint: None,
         },
         truncate: truncate.unwrap_or(false),
+        reply: None,
     });
 }
 
@@ -123,8 +124,8 @@ pub fn update_settings(app: AppHandle, state: State<'_, AppState>, patch: Value)
         return Err("settings patch must be an object".into());
     };
     for (k, v) in patch {
-        // Shortcuts change only through set_shortcut, which validates them.
-        if k != "shortcuts" && target.contains_key(&k) {
+        // Shortcuts and pairings change only through their own commands.
+        if k != "shortcuts" && k != "pairedExtensions" && target.contains_key(&k) {
             target.insert(k, v);
         }
     }
@@ -148,6 +149,13 @@ pub fn update_settings(app: AppHandle, state: State<'_, AppState>, patch: Value)
     }
     if next.volume != before.volume {
         c.send(Command::SetVolume(next.volume));
+    }
+    if next.match_page_language != before.match_page_language {
+        c.send(Command::SetMatchLanguage(next.match_page_language));
+    }
+    if next.chrome_bridge != before.chrome_bridge {
+        let a = app.clone();
+        std::thread::spawn(move || crate::bridge::apply_enabled(&a));
     }
     if next.voice != before.voice {
         c.send(Command::SetVoice(next.voice.clone()));
@@ -309,4 +317,49 @@ mod tests {
             assert_eq!(display_binding("Control+Shift+Space"), "Ctrl+Shift+Space");
         }
     }
+}
+
+/// Friendly name for a stored voice ID, e.g. `kokoro:af_heart` → `Heart`.
+pub fn voice_display(id: &str) -> String {
+    match id.split_once(':') {
+        Some((_, v)) => {
+            let name = v.split_once('_').map_or(v, |(_, n)| n);
+            let mut c = name.chars();
+            c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
+        }
+        None => id.split(" (").next().unwrap_or(id).to_string(),
+    }
+}
+
+#[tauri::command]
+pub async fn bridge_status(app: AppHandle) -> crate::bridge::BridgeStatus {
+    crate::bridge::status(&app)
+}
+
+#[tauri::command]
+pub async fn bridge_test(app: AppHandle) -> Result<crate::bridge::TestResult, String> {
+    tauri::async_runtime::spawn_blocking(move || crate::bridge::test_connection(&app))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn bridge_revoke(app: AppHandle, id: String) {
+    crate::bridge::revoke(&app, &id);
+}
+
+#[tauri::command]
+pub fn bridge_allow_again(app: AppHandle, id: String) {
+    crate::bridge::forget_decline(&app, &id);
+}
+
+/// Shows the unpacked extension folder in Finder for "Load unpacked".
+#[tauri::command]
+pub fn open_extension_folder(app: AppHandle) -> Result<(), String> {
+    let folder = crate::bridge::extension_folder(&app).ok_or("The extension folder is missing from this build.")?;
+    std::process::Command::new("/usr/bin/open")
+        .arg(&folder)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }

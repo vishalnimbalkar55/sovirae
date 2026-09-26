@@ -5,6 +5,7 @@ import type {
   Envelope,
   InitialState,
   ModelView,
+  BridgeStatus,
   Notice,
   Settings,
   ShortcutStatus,
@@ -34,6 +35,11 @@ export const api = {
   downloadModel: (model: string, artifact: string) => invoke<void>("download_model", { model, artifact }),
   cancelDownload: (model: string) => invoke<void>("cancel_download", { model }),
   removeModel: (model: string) => invoke<void>("remove_model", { model }),
+  bridgeStatus: () => invoke<BridgeStatus>("bridge_status"),
+  bridgeTest: () => invoke<{ ok: boolean; message: string }>("bridge_test"),
+  bridgeRevoke: (id: string) => invoke<void>("bridge_revoke", { id }),
+  bridgeAllowAgain: (id: string) => invoke<void>("bridge_allow_again", { id }),
+  openExtensionFolder: () => invoke<void>("open_extension_folder"),
 };
 
 type Events = {
@@ -45,6 +51,7 @@ type Events = {
   navigate: string;
   "player-collapse": null;
   model: ModelView;
+  bridge: BridgeStatus;
 };
 
 export function on<K extends keyof Events>(event: K, handler: (payload: Events[K]) => void): () => void {

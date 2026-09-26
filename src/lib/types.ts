@@ -79,6 +79,22 @@ export interface Settings {
   sentenceSnap: boolean;
   followReading: boolean;
   playerTopmost: boolean;
+  chromeBridge: boolean;
+  pairedExtensions: string[];
+  matchPageLanguage: boolean;
+}
+
+export interface BridgeStatus {
+  enabled: boolean;
+  listening: boolean;
+  extensionId: string;
+  extensionFolder: string | null;
+  hostInstalled: boolean;
+  browsers: { name: string; registered: boolean }[];
+  paired: string[];
+  connected: number;
+  lastConnectionSecs: number | null;
+  lastExtension: string | null;
 }
 
 export interface ShortcutStatus {

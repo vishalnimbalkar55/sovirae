@@ -1,0 +1,106 @@
+# Sovirae
+
+Local read-aloud app with a floating player and a Chrome extension. Speech is
+generated on this computer: macOS system voices out of the box, and Kokoro-82M
+neural voices after a one-time download.
+
+The product spec lives in [`spec/`](spec/README.md); progress is tracked in the
+step files there.
+
+## Build the complete project
+
+One command checks prerequisites, installs packages, runs every test, and
+builds the app, installer, and Chrome extension:
+
+```bash
+npm run build:all
+```
+
+It prints where everything was written:
+
+```
+App:       target/release/bundle/macos/Sovirae.app
+Installer: target/release/bundle/dmg/Sovirae_0.1.0_aarch64.dmg
+Extension: target/release/bundle/macos/Sovirae.app/Contents/Resources/ext
+```
+
+Skip the tests with `bash scripts/build.sh --skip-tests`. A full build takes
+about 3 minutes from a warm cache (longer the first time, while Rust and ONNX
+Runtime download).
+
+### Prerequisites (macOS 13 or later; built and tested on Apple Silicon)
+
+| Tool | Install |
+|---|---|
+| Xcode Command Line Tools | `xcode-select --install` |
+| Rust (stable) | `curl https://sh.rustup.rs -sSf \| sh` |
+| Node.js 22+ | from nodejs.org or `brew install node` |
+| espeak-ng (for Kokoro voices) | `brew install espeak-ng` |
+
+`build:all` stops with a clear message if a required tool is missing and warns
+if espeak-ng is absent (the app still builds; system voices still work).
+
+### What the build contains
+
+`Sovirae.app/Contents/MacOS/` holds three programs:
+
+| File | Role |
+|---|---|
+| `speakit` | The app: windows, player, shortcuts, menu bar icon |
+| `speakit-kokoro-worker` | Kokoro inference in its own process (ONNX Runtime built in) |
+| `speakit-native-host` | Connects Chrome to the app |
+
+`Contents/Resources/ext/` is the Chrome extension, ready for **Load unpacked**.
+Neural voice models are not bundled; download them in Sovirae › Voices.
+
+The build is ad-hoc signed, which is fine on the machine that built it. To
+share it, sign and notarize with an Apple Developer ID.
+
+## Everyday commands
+
+| Task | Command |
+|---|---|
+| Build everything (tests + app + installer + extension) | `npm run build:all` |
+| Build without tests | `npm run app:build` |
+| Run in development (hot reload) | `npm run app:dev` |
+| Run all tests (Rust + extension) | `npm test` |
+| Work on the UI in a browser with sample data | `npm run dev`, then open `http://localhost:1420` |
+
+Longer checks that play audio or need the Kokoro model are opt-in:
+
+```bash
+cargo test -p speakit -- --ignored          # real playback, including Kokoro
+python3 scripts/check-bridge.py             # Chrome bridge, 22 checks (extension must be allowed)
+cargo run --release -p speakit-tts --example kokoro_bench -- \
+  "$HOME/Library/Application Support/com.sovirae.desktop/models" fp32 /tmp/kokoro-wav
+```
+
+## Chrome extension
+
+1. Start Sovirae once so it registers its connection with Chrome, Edge, Brave,
+   Chromium, Vivaldi, and Arc.
+2. Open `chrome://extensions`, turn on **Developer mode**, choose **Load
+   unpacked**, and select the extension folder (Sovirae › Extension › Show
+   folder). In development this is [`ext/`](ext/).
+3. Select text and press **⌥⇧S**, right-click › **Read with Sovirae**, or hold
+   **Option** to pick part of a page. Allow Chrome the first time Sovirae asks.
+
+The extension ID is fixed at `jhbbmlhbjhjdepmaebpniefhaoljfgoe` by the `key` in
+`ext/manifest.json`. The matching private key (only needed to pack a `.crx`) is
+kept outside the repository in
+`~/Library/Application Support/com.sovirae.desktop/keys/`.
+
+## Layout
+
+| Path | What |
+|---|---|
+| `src/` | React UI: main window and floating player |
+| `src-tauri/` | Tauri shell: session controller, shortcuts, tray, models, Chrome bridge |
+| `crates/speakit-core` | Text validation, normalization, sentence index |
+| `crates/speakit-audio` | Audio output and pitch-preserving speed |
+| `crates/speakit-tts` | System voices, Kokoro engine, phonemizer, engine registry |
+| `crates/speakit-models` | Model catalog (`catalog/models.json`) and verified downloads |
+| `crates/speakit-protocol` | Chrome bridge message format |
+| `workers/speakit-kokoro-worker` | Isolated ONNX inference process |
+| `workers/speakit-native-host` | Chrome native messaging relay |
+| `ext/` | Chrome MV3 extension |

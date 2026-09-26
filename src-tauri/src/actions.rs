@@ -59,6 +59,7 @@ pub fn speak_clipboard<R: Runtime>(app: AppHandle<R>, truncate: bool) {
                     language_hint: None,
                 },
                 truncate,
+                reply: None,
             }),
             ClipboardText::Empty => notify(&app, "NO_TEXT", "Clipboard is empty. Copy some text and try again."),
             ClipboardText::NotText => notify(&app, "NOT_TEXT", "Clipboard does not contain text."),

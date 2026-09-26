@@ -2,6 +2,7 @@
 //! between the session controller and the React UI.
 
 mod actions;
+mod bridge;
 mod commands;
 mod controller;
 mod models;
@@ -30,6 +31,7 @@ pub struct AppState {
     pub document: Mutex<Option<DocumentView>>,
     pub shortcuts: shortcuts::ShortcutManager,
     pub playback_active: AtomicBool,
+    pub bridge: bridge::Bridge,
 }
 
 struct AppHost {
@@ -42,6 +44,7 @@ impl Host for AppHost {
             *state.snapshot.lock().unwrap() = snapshot.clone();
         }
         let _ = self.app.emit("playback", snapshot);
+        bridge::on_snapshot(&self.app, snapshot);
     }
 
     fn notice(&self, notice: &Notice) {
@@ -167,6 +170,7 @@ pub fn run() {
             Some(vec!["--minimized"]),
         ))
         .plugin(shortcuts::plugin())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let handle = app.handle().clone();
             let store = Store::new(app.path().app_config_dir()?);
@@ -176,6 +180,7 @@ pub fn run() {
             let controller = controller::spawn(
                 engine.clone() as Arc<dyn Engine>,
                 controller::Config {
+                    match_language: settings.match_page_language,
                     rate: settings.rate,
                     volume: settings.volume,
                     voice: settings.voice.clone(),
@@ -183,7 +188,9 @@ pub fn run() {
                 },
                 AppHost { app: handle.clone() },
             );
-            let start_hidden = settings.start_minimized && std::env::args().any(|a| a == "--minimized");
+            // `--background` comes from the Chrome host starting the app on demand.
+            let start_hidden = (settings.start_minimized && std::env::args().any(|a| a == "--minimized"))
+                || std::env::args().any(|a| a == "--background");
             let topmost = settings.player_topmost;
             app.manage(AppState {
                 controller,
@@ -195,6 +202,7 @@ pub fn run() {
                 shortcuts: Default::default(),
                 models: Default::default(),
                 playback_active: AtomicBool::new(false),
+                bridge: Default::default(),
             });
 
             tray::create(&handle)?;
@@ -208,6 +216,8 @@ pub fn run() {
             // Registration round-trips through the main thread.
             let h = handle.clone();
             std::thread::spawn(move || shortcuts::apply(&h));
+            let h = handle.clone();
+            std::thread::spawn(move || bridge::apply_enabled(&h));
             Ok(())
         })
         .on_window_event(|window, event| match (window.label(), event) {
@@ -252,6 +262,11 @@ pub fn run() {
             models::download_model,
             models::cancel_download,
             models::remove_model,
+            commands::bridge_status,
+            commands::bridge_test,
+            commands::bridge_revoke,
+            commands::bridge_allow_again,
+            commands::open_extension_folder,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Sovirae")

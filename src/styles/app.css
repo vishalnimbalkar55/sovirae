@@ -327,3 +327,46 @@
   .slider { width: 130px; }
   .sheet textarea { padding: 24px 24px 12px; }
 }
+
+/* ── Extension ───────────────────────────────────────── */
+.browser-pills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 360px; }
+.browser-pills .pill svg, .row-control .pill svg { width: 12px; height: 12px; }
+.steps {
+  list-style: none;
+  counter-reset: step;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border-radius: var(--r-panel);
+  box-shadow: var(--shadow-sm), 0 0 0 1px var(--hairline);
+}
+.steps li {
+  counter-increment: step;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+}
+.steps li + li { box-shadow: inset 0 1px 0 var(--hairline); }
+.steps li::before {
+  content: counter(step);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--violet-soft);
+  color: var(--action);
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.steps li > div { flex: 1; min-width: 0; }
+.path {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+  word-break: break-all;
+}
+.model-meta .path { display: inline; margin: 0; }

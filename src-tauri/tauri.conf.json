@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.sovirae.desktop",
   "build": {
-    "beforeDevCommand": "cargo build -q --release -p speakit-kokoro-worker && npm run dev",
+    "beforeDevCommand": "cargo build --release -p speakit-kokoro-worker -p speakit-native-host && npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "cargo build -q --release -p speakit-kokoro-worker && npm run build",
+    "beforeBuildCommand": "cargo build --release -p speakit-kokoro-worker -p speakit-native-host && npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -48,10 +48,37 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg"],
+    "targets": [
+      "app",
+      "dmg"
+    ],
     "category": "Productivity",
     "shortDescription": "Local text-to-speech",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
-    "macOS": { "minimumSystemVersion": "13.0" }
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "13.0",
+      "files": {
+        "MacOS/speakit-kokoro-worker": "../target/release/speakit-kokoro-worker",
+        "MacOS/speakit-native-host": "../target/release/speakit-native-host"
+      }
+    },
+    "resources": {
+      "../ext/manifest.json": "ext/manifest.json",
+      "../ext/sw.js": "ext/sw.js",
+      "../ext/content.js": "ext/content.js",
+      "../ext/popup.html": "ext/popup.html",
+      "../ext/popup.js": "ext/popup.js",
+      "../ext/options.html": "ext/options.html",
+      "../ext/options.js": "ext/options.js",
+      "../ext/ui.css": "ext/ui.css",
+      "../ext/lib/*.js": "ext/lib/",
+      "../ext/icons/*.png": "ext/icons/"
+    }
   }
 }

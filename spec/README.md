@@ -18,7 +18,10 @@ The specification has **24 topic files** and **14 individual delivery steps**. T
 | 5 Index and scheduling | Mostly built | 11 text tests, 4 stretcher tests, measured 2.00× at 2.0× |
 | 6 Neural models | Mostly built | Verified Kokoro download and install, isolated worker, 0.92 s warm first audio |
 | 7 Player polish | Partly done | Waveform, accessible seek, expanded sentence view |
-| 8–12 | Not started | — |
+| 8 Desktop capture | Not started | — |
+| 9 Native bridge | Mostly built | Chrome stand-in passed 22/22; host starts the app in 0.31 s |
+| 10–11 Extension | Built, untested in Chrome | Selection reading, picker, popup, options; 11 unit tests |
+| 12 Packaging | Started | `npm run app:build` bundles the app, workers, and extension |
 
 A step's checkbox below is ticked only when its gate passes.
 

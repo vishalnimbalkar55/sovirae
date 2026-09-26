@@ -386,5 +386,6 @@ kbd {
   white-space: nowrap;
 }
 .pill.ok { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
+.pill.warn { background: var(--error-soft); color: var(--error); }
 .pill.violet { background: var(--violet-soft); color: var(--action); }
 .pill .led { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }

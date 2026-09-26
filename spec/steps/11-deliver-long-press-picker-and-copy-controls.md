@@ -6,7 +6,7 @@
 
 **Dependency:** Complete Step 10 and its gate first.
 
-- [ ] Implement trigger state machine and editable-field exclusions.
+- [x] Implement trigger state machine and editable-field exclusions.
 - [ ] Add hover highlight and candidate discovery.
 - [ ] Add wheel/keyboard scope controls.
 - [ ] Add latched confirmation with text preview.
@@ -15,6 +15,11 @@
 - [ ] Verify ordinary Ctrl/Alt shortcuts are preserved.
 
 **Gate:** documented results across at least ten representative sites/fixtures and all picker cancellation paths.
+
+## Progress — 2026-09-26
+
+- Built, not yet loaded in Chrome: long-press trigger (Option on macOS, Ctrl elsewhere, or shortcut-only; 300–1000 ms, default 450 ms; latches after release; cancelled by other keys, clicks, repeats, IME, AltGr, and editable fields; 6 Node tests), hover highlight with a scope label, ↑/↓ and Option+wheel resizing, a confirmation panel with preview, word count, estimate, Listen, Copy text, Back, and Close, link clicks blocked while picking, 15 s inactivity cancel, one picker per tab across frames, and live `innerText` extraction.
+- Improvement over the spec's wording: plain scrolling keeps working while picking; resizing uses the arrow keys, Option+wheel, or the ↑/↓ buttons on the label.
 
 ## Relevant requirements
 

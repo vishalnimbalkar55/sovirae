@@ -28,7 +28,9 @@ const COMPLETED_LINGER: Duration = Duration::from_secs(4);
 
 #[derive(Debug)]
 pub enum Command {
-    Speak { request: SpeakRequest, truncate: bool },
+    /// `reply`, when present, receives the outcome instead of a player
+    /// notice: the new session ID, or why the request was rejected.
+    Speak { request: SpeakRequest, truncate: bool, reply: Option<Sender<SpeakOutcome>> },
     TogglePause,
     Play,
     Pause,
@@ -39,10 +41,14 @@ pub enum Command {
     SetRate(f32),
     SetVolume(f32),
     SetVoice(Option<String>),
+    /// Prefer a voice in the page's language when one exists (Chrome).
+    SetMatchLanguage(bool),
     SetProfile(ResourceProfile),
     Preview(String),
     Shutdown,
 }
+
+pub type SpeakOutcome = Result<u64, Notice>;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -174,6 +180,7 @@ struct Session {
 }
 
 pub struct Config {
+    pub match_language: bool,
     pub rate: f32,
     pub volume: f32,
     pub voice: Option<String>,
@@ -220,6 +227,7 @@ pub fn spawn<H: Host>(engine: Arc<dyn Engine>, config: Config, host: H) -> Contr
         rate: config.rate,
         volume: config.volume,
         voice: config.voice,
+        match_language: config.match_language,
         profile: config.profile,
         sample_rate: 48_000,
         active: false,
@@ -249,6 +257,7 @@ struct Worker<H: Host> {
     rate: f32,
     volume: f32,
     voice: Option<String>,
+    match_language: bool,
     profile: ResourceProfile,
     sample_rate: u32,
     active: bool,
@@ -278,7 +287,7 @@ impl<H: Host> Worker<H> {
 
     fn handle(&mut self, c: Command) {
         match c {
-            Command::Speak { request, truncate } => self.speak(request, truncate),
+            Command::Speak { request, truncate, reply } => self.speak(request, truncate, reply),
             Command::Preview(voice) => self.preview(&voice),
             Command::TogglePause => {
                 let paused = self.session.as_ref().map(|s| s.user_paused);
@@ -328,6 +337,7 @@ impl<H: Host> Worker<H> {
             }
             // Applies to the next reading; the current one keeps its voice.
             Command::SetVoice(v) => self.voice = v,
+            Command::SetMatchLanguage(m) => self.match_language = m,
             Command::SetProfile(p) => self.profile = p,
             Command::Shutdown => {}
         }
@@ -364,7 +374,15 @@ impl<H: Host> Worker<H> {
         true
     }
 
-    fn speak(&mut self, request: SpeakRequest, truncate: bool) {
+    fn speak(&mut self, request: SpeakRequest, truncate: bool, reply: Option<Sender<SpeakOutcome>>) {
+        // Callers with a reply channel (the Chrome bridge) show their own
+        // errors; everyone else gets a player notice.
+        let reject = |host: &H, notice: Notice| match &reply {
+            Some(tx) => {
+                let _ = tx.send(Err(notice));
+            }
+            None => host.notice(&notice),
+        };
         let mut text = request.text;
         // Rejected input never stops a working reading (spec §10.1).
         match validate(&text) {
@@ -375,7 +393,7 @@ impl<H: Host> Worker<H> {
                     SourceKind::Selection => "Select text first, or copy it and use Speak clipboard.",
                     _ => "There is no text to read.",
                 };
-                self.host.notice(&Notice::new("NO_TEXT", message));
+                reject(&self.host, Notice::new("NO_TEXT", message));
                 return;
             }
             Err(TextError::TextTooLong { .. }) if truncate => {
@@ -392,24 +410,60 @@ impl<H: Host> Worker<H> {
                 if request.source.kind == SourceKind::Clipboard {
                     n.action = Some("readFirstPart");
                 }
-                self.host.notice(&n);
+                reject(&self.host, n);
                 return;
             }
         }
-        let Some(voice) = self.resolve_voice(self.voice.as_deref()) else {
-            self.host.notice(&Notice::new("NO_VOICE", "Choose or download a voice to start reading."));
+        let Some(mut voice) = self.resolve_voice(self.voice.as_deref()) else {
+            reject(&self.host, Notice::new("NO_VOICE", "Choose or download a voice to start reading."));
             return;
         };
+        if self.match_language {
+            if let Some(hint) = request.language_hint.as_deref() {
+                if let Some(better) = self.voice_for_language(&voice, hint) {
+                    voice = better;
+                }
+            }
+        }
         let doc = SpeechDocument::new(text, self.engine.max_segment_chars());
         if doc.segments.is_empty() {
-            self.host.notice(&Notice::new("NO_TEXT", "There is nothing readable in this text."));
+            reject(&self.host, Notice::new("NO_TEXT", "There is nothing readable in this text."));
             return;
         }
         if !self.ensure_player() {
+            if let Some(tx) = &reply {
+                let _ = tx.send(Err(Notice::new("AUDIO_DEVICE", "No audio output device is available.")));
+            }
             return;
         }
         self.stash = None;
         self.start_session(doc, request.source, voice, false);
+        if let (Some(tx), Some(s)) = (&reply, &self.session) {
+            let _ = tx.send(Ok(s.id));
+        }
+    }
+
+    /// A voice of the same model in the page's language, keeping the
+    /// gender when possible. `None` when the chosen voice already fits or no
+    /// voice speaks that language.
+    fn voice_for_language(&self, chosen: &VoiceInfo, hint: &str) -> Option<VoiceInfo> {
+        let primary = |tag: &str| tag.split(['-', '_']).next().unwrap_or("").to_ascii_lowercase();
+        let want = primary(hint);
+        if want.is_empty() || primary(&chosen.language) == want {
+            return None;
+        }
+        let voices = self.engine.voices().ok()?;
+        let same_model: Vec<&VoiceInfo> =
+            voices.iter().filter(|v| v.model == chosen.model && primary(&v.language) == want).collect();
+        let exact = |v: &&&VoiceInfo| v.language.eq_ignore_ascii_case(hint);
+        same_model
+            .iter()
+            .filter(exact)
+            .find(|v| v.gender == chosen.gender)
+            .or_else(|| same_model.iter().find(|v| v.gender == chosen.gender))
+            .or_else(|| same_model.iter().filter(exact).next())
+            .or_else(|| same_model.first())
+            .map(|v| (*v).clone())
     }
 
     fn preview(&mut self, voice_id: &str) {
@@ -963,6 +1017,7 @@ mod tests {
                 language_hint: None,
             },
             truncate: false,
+            reply: None,
         }
     }
 
@@ -975,7 +1030,7 @@ mod tests {
     fn rejected_input_does_not_start_a_session() {
         let host = TestHost::default();
         let engine: Arc<dyn Engine> = Arc::from(speakit_tts::system_engine());
-        let c = spawn(engine, Config { rate: 1.0, volume: 0.0, voice: None, profile: ResourceProfile::Balanced }, host.clone());
+        let c = spawn(engine, Config { match_language: true, rate: 1.0, volume: 0.0, voice: None, profile: ResourceProfile::Balanced }, host.clone());
         c.send(request("   \n "));
         std::thread::sleep(Duration::from_millis(200));
         let log = host.0.lock().unwrap();
@@ -990,7 +1045,7 @@ mod tests {
     fn end_to_end_reading() {
         let host = TestHost::default();
         let engine: Arc<dyn Engine> = Arc::from(speakit_tts::system_engine());
-        let c = spawn(engine, Config { rate: 1.0, volume: 0.15, voice: None, profile: ResourceProfile::Balanced }, host.clone());
+        let c = spawn(engine, Config { match_language: true, rate: 1.0, volume: 0.15, voice: None, profile: ResourceProfile::Balanced }, host.clone());
 
         c.send(request(TEXT));
         let first = host.wait_for(Duration::from_secs(5), |s| s.status == PlaybackStatus::Playing)
@@ -1074,7 +1129,7 @@ mod tests {
             model_file: installed.model_file.clone(), worker_bin, voices, threads: 4, model_rate: model.sample_rate,
         }))));
         let host = TestHost::default();
-        let c = spawn(registry.clone(), Config { rate: 1.0, volume: 0.15, voice: Some("kokoro:af_heart".into()), profile: ResourceProfile::Balanced }, host.clone());
+        let c = spawn(registry.clone(), Config { match_language: true, rate: 1.0, volume: 0.15, voice: Some("kokoro:af_heart".into()), profile: ResourceProfile::Balanced }, host.clone());
 
         c.send(request(TEXT));
         let first = host.wait_for(Duration::from_secs(15), |s| s.status == PlaybackStatus::Playing).expect("plays");

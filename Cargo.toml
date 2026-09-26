@@ -20,6 +20,7 @@ speakit-core = { path = "crates/speakit-core" }
 speakit-audio = { path = "crates/speakit-audio" }
 speakit-tts = { path = "crates/speakit-tts" }
 speakit-models = { path = "crates/speakit-models" }
+speakit-protocol = { path = "crates/speakit-protocol" }
 
 [profile.release]
 lto = "thin"

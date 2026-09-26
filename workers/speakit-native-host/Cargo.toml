@@ -1,0 +1,10 @@
+[package]
+name = "speakit-native-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Chrome native messaging host that relays to the Sovirae app"
+
+[dependencies]
+speakit-protocol.workspace = true
+libc = "0.2"

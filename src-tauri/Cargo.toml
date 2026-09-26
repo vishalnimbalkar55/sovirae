@@ -17,6 +17,7 @@ tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-ap
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
+tauri-plugin-dialog = "2"
 serde.workspace = true
 serde_json.workspace = true
 log.workspace = true
@@ -25,6 +26,8 @@ speakit-core.workspace = true
 speakit-audio.workspace = true
 speakit-tts.workspace = true
 speakit-models.workspace = true
+speakit-protocol.workspace = true
+libc = "0.2"
 
 [dev-dependencies]
 speakit-models.workspace = true

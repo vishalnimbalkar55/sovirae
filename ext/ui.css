@@ -1,0 +1,50 @@
+/* Shared by the popup and options pages. Sovirae brand tokens. */
+:root {
+  --canvas: #f7f6f3; --surface: #fff; --ink: #1a1a1a; --ink-2: #6b6862; --violet: #7c5cff; --action: #6242d6;
+  --on-action: #fff; --hair: rgba(38, 32, 20, 0.1); --fill: rgba(38, 32, 20, 0.05); --soft: rgba(124, 92, 255, 0.1);
+  --track: #e2dfd8; --ok: #2e7d5b; --error: #b63229; --error-soft: rgba(182, 50, 41, 0.08);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #17181c; --surface: #222329; --ink: #f1f0f4; --ink-2: #b8b6c2; --violet: #a28bff; --action: #b5a2ff;
+    --on-action: #17181c; --hair: rgba(255, 255, 255, 0.09); --fill: rgba(255, 255, 255, 0.05);
+    --soft: rgba(162, 139, 255, 0.14); --track: #3a3b44; --ok: #7acba7; --error: #ff9c91; --error-soft: rgba(255, 156, 145, 0.1);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--canvas); -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+.mark { width: 20px; height: 20px; color: var(--violet); flex: none; }
+.muted { color: var(--ink-2); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px;
+  border-radius: 9px; border: 1px solid var(--hair); background: var(--surface); font-weight: 600; cursor: pointer; }
+.btn:hover:not(:disabled) { background: var(--soft); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.primary { background: var(--action); color: var(--on-action); border-color: transparent; }
+.btn.primary:hover:not(:disabled) { background: var(--action); filter: brightness(1.07); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); }
+.icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: none; background: transparent; cursor: pointer; color: var(--ink); }
+.icon:hover { background: var(--fill); }
+.icon svg { width: 16px; height: 16px; }
+.icon.play { background: var(--action); color: var(--on-action); }
+.pill { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--fill); color: var(--ink-2); white-space: nowrap; }
+.pill.ok { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+.pill.warn { background: var(--error-soft); color: var(--error); }
+.pill .led { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.switch { appearance: none; width: 34px; height: 20px; border-radius: 999px; background: var(--track); position: relative; cursor: pointer; flex: none; margin: 0; transition: background 140ms; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform 160ms; }
+.switch:checked { background: var(--action); }
+.switch:checked::after { transform: translateX(14px); }
+.switch:disabled { opacity: .4; cursor: default; }
+.card { background: var(--surface); border-radius: 12px; box-shadow: 0 0 0 1px var(--hair); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; }
+.row + .row { border-top: 1px solid var(--hair); }
+.row label, .row .label { display: flex; flex-direction: column; gap: 1px; }
+.hint { font-size: 12px; color: var(--ink-2); }
+kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px; border: 1px solid var(--hair); background: var(--surface); font: 600 11px/18px -apple-system, system-ui, sans-serif; text-align: center; }
+.problem { padding: 10px 12px; border-radius: 10px; background: var(--error-soft); color: var(--ink); }
+.problem b { color: var(--error); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

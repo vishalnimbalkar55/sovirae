@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Sovirae",
+  "version": "0.1.0",
+  "description": "Read selected text or any part of a page aloud with Sovirae's local voices.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtKQbYpsPQ35SPyxGfCMHYfqdfVjupN+DTrG8HQnj5ufqQ+YVX5WkLytLz2+c/npAML9GrmGCuYXFuKEeV5KilHZ+pcYGgS8tXWSbO9n2z5uaskwQvNR4nHX4w1QBICbTKSbEZAnt/+Y93V2r+i7PO6wBDUC1WsIqIfsPfgvURgehAF8a5Xtdswj6ongbvpNeNc4IXVJYebyAf0opl7Y84bl0RGmX86b2zmJoFXf8NSqeeUGwbtWM2fBUciXn7kJWQgiFVVlHSGgB38PzCaRwZivtiq8kKAYmAGllijDgsLsAC28usMG77AQ1vfhtGHHCoxH0bgzd70h8la5jSDiiywIDAQAB",
+  "minimum_chrome_version": "116",
+  "background": { "service_worker": "sw.js", "type": "module" },
+  "permissions": ["nativeMessaging", "storage", "activeTab", "scripting", "contextMenus"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Sovirae",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  },
+  "options_page": "options.html",
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "commands": {
+    "read-selection": {
+      "suggested_key": { "default": "Alt+Shift+S", "mac": "Alt+Shift+S" },
+      "description": "Read the selected text"
+    },
+    "pick-text": {
+      "suggested_key": { "default": "Alt+Shift+P", "mac": "Alt+Shift+P" },
+      "description": "Pick part of the page to read"
+    }
+  }
+}

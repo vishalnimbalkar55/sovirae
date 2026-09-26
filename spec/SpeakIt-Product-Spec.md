@@ -975,10 +975,10 @@ Development was authorized on 2026-09-26. Complete milestones sequentially and r
 
 ### Step 9 — Build the native bridge
 
-- [ ] Implement framed reads/writes, byte caps, and schema validation.
+- [x] Implement framed reads/writes, byte caps, and schema validation.
 - [ ] Add per-user pipe or Unix-socket security, native-host registration, and caller-origin handling on every target OS.
 - [ ] Add hello, pairing, revoke, speak, control, and state.
-- [ ] Implement launch/reconnect timeouts and request deduplication.
+- [x] Implement launch/reconnect timeouts and request deduplication.
 - [ ] Test with a minimal extension before the picker.
 
 **Gate:** round trip succeeds; malformed, oversized, unauthorized, and duplicate messages behave predictably.
@@ -995,7 +995,7 @@ Development was authorized on 2026-09-26. Complete milestones sequentially and r
 
 ### Step 11 — Deliver long-press picker and copy controls
 
-- [ ] Implement trigger state machine and editable-field exclusions.
+- [x] Implement trigger state machine and editable-field exclusions.
 - [ ] Add hover highlight and candidate discovery.
 - [ ] Add wheel/keyboard scope controls.
 - [ ] Add latched confirmation with text preview.

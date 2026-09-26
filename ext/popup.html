@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Sovirae</title>
+  <link rel="stylesheet" href="ui.css" />
+  <style>
+    body { width: 340px; }
+    header { display: flex; align-items: center; gap: 8px; padding: 12px 14px 10px; }
+    header .name { font-weight: 650; font-size: 15px; flex: 1; }
+    main { display: grid; gap: 10px; padding: 0 12px 12px; }
+    .now { padding: 12px; }
+    .now-top { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .now-title { font-weight: 650; }
+    .bar { height: 4px; border-radius: 4px; background: var(--track); overflow: hidden; margin: 6px 0 8px; }
+    .bar span { display: block; height: 100%; background: var(--action); width: 0; }
+    .controls { display: flex; align-items: center; gap: 4px; }
+    .controls .time { margin-left: auto; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .actions .btn { height: 38px; }
+    .shortcut { display: flex; justify-content: center; gap: 3px; margin-top: 4px; font-size: 11px; color: var(--ink-2); }
+    footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px 12px; border-top: 1px solid var(--hair); }
+    footer label { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.5 3.5v3.2c0 1-.9 1.6-3 1.6-2.4 0-4.8.9-4.8 3.3 0 2.2 2 2.8 4.3 3.3 2.4.5 4.5 1.3 4.5 3.5 0 2.3-2.2 3.3-4.7 3.3-2 0-3.6-.6-4.6-1.7" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="name">Sovirae</span>
+    <span id="status" class="pill">Checking…</span>
+  </header>
+  <main>
+    <div id="problem" class="problem" role="alert" hidden></div>
+
+    <section id="now" class="card now" hidden aria-label="Now reading">
+      <div class="now-top"><span class="now-title" id="now-title">Reading</span><span class="muted" id="now-voice"></span></div>
+      <div class="bar"><span id="now-bar"></span></div>
+      <div class="controls">
+        <button class="icon" data-control="skip-back" aria-label="Back 10 seconds" title="Back 10 seconds"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4.5v4h4"/></svg></button>
+        <button class="icon play" id="toggle" data-control="toggle" aria-label="Pause"><svg viewBox="0 0 24 24"><rect x="6.5" y="5.5" width="3.8" height="13" rx="1" fill="currentColor"/><rect x="13.7" y="5.5" width="3.8" height="13" rx="1" fill="currentColor"/></svg></button>
+        <button class="icon" data-control="skip-forward" aria-label="Forward 10 seconds" title="Forward 10 seconds"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4.5v4h-4"/></svg></button>
+        <button class="icon" data-control="stop" aria-label="Stop" title="Stop"><svg viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor"/></svg></button>
+        <span class="time" id="now-time"></span>
+      </div>
+    </section>
+
+    <section class="actions">
+      <div><button class="btn primary" id="read" style="width:100%">Read selection</button><div class="shortcut" id="read-keys"></div></div>
+      <div><button class="btn" id="pick" style="width:100%">Pick text</button><div class="shortcut" id="pick-keys"></div></div>
+    </section>
+
+    <section class="card" id="site" aria-label="This site">
+      <div class="row">
+        <label for="ready"><span id="ready-label">Always ready on this site</span><span class="hint">Lets a long press start picking without clicking here first.</span></label>
+        <input type="checkbox" role="switch" class="switch" id="ready" />
+      </div>
+      <div class="row">
+        <label for="site-on"><span>Use Sovirae on this site</span></label>
+        <input type="checkbox" role="switch" class="switch" id="site-on" />
+      </div>
+    </section>
+  </main>
+  <footer>
+    <label><input type="checkbox" role="switch" class="switch" id="enabled" /> Sovirae in Chrome</label>
+    <button class="btn ghost" id="options">Options</button>
+  </footer>
+  <script src="popup.js"></script>
+</body>
+</html>

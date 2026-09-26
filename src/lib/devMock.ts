@@ -16,6 +16,7 @@ export function installDevMock() {
     theme: params.get("theme") ?? "system", readingFontSize: 18, readingFont: "serif", rate: 1.2, volume: 0.8,
     voice: "Samantha" as string | null, resourceProfile: "balanced", startAtLogin: false, keepRunning: true, startMinimized: false,
     hotkeysPaused: false, sentenceSnap: false, followReading: true, playerTopmost: true,
+    chromeBridge: true, pairedExtensions: [] as string[], matchPageLanguage: true,
   };
   const segments: [number, number, number, number, boolean][] = [];
   const bytes = new TextEncoder();
@@ -73,6 +74,14 @@ export function installDevMock() {
           conflict: binding === "Command+Alt+Space" ? "Opens a Finder search window by default."
             : String(binding).endsWith("ArrowLeft") || String(binding).endsWith("ArrowRight") ? "Switches tabs in Chrome, Safari, and many editors." : null,
         }));
+        case "bridge_status": return {
+          enabled: true, listening: true, extensionId: "jhbbmlhbjhjdepmaebpniefhaoljfgoe",
+          extensionFolder: "/Users/you/Projects/sovirae/ext", hostInstalled: true,
+          browsers: [{ name: "Google Chrome", registered: true }, { name: "Arc", registered: false }],
+          paired: params.get("paired") ? ["jhbbmlhbjhjdepmaebpniefhaoljfgoe"] : [], connected: params.get("paired") ? 1 : 0,
+          lastConnectionSecs: params.get("paired") ? 5 : null, lastExtension: null,
+        };
+        case "bridge_test": return { ok: true, message: "Google Chrome can reach Sovirae. The extension is allowed." };
         case "update_settings":
           Object.assign(settings, (args as { patch: object }).patch);
           setTimeout(() => emit("settings", { ...settings }), 0);

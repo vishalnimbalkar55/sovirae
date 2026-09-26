@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "app:dev": "tauri dev",
+    "app:build": "tauri build",
+    "test": "cargo test --workspace && node --test ext/tests/*.test.js",
+    "build:all": "bash scripts/build.sh"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
