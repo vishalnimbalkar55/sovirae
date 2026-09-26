@@ -10,6 +10,7 @@
 |---|---|---|---|
 | Kokoro-82M | Primary quality candidate | CPU baseline; GPU only for tested export/provider combinations | Pass pronunciation, startup, resource, and listening gates |
 | Piper | Lightweight alternative | CPU first | Pass quality checks and engine/voice distribution-license review |
+| Kyutai Pocket TTS (100M), English | Quality candidate (added 2026-09-26; English only by decision) | CPU; Kyutai reports no GPU gain on Apple Silicon | Pass listening gates; resolve per-voice licenses (two predefined voices are non-commercial) |
 | Platform system voice, where available | Optional zero-download fallback | OS-managed local speech | Test whether each OS exposes offline voices and controllable PCM; do not promise on Linux |
 
 Kokoro has 82 million parameters and Apache-2.0 model weights. That makes it a reasonable compact quality candidate, not proof of performance on the user's hardware. Its official example emits 24 kHz audio; use each artifact's actual declared format. [Model card](https://huggingface.co/hexgrad/Kokoro-82M)
@@ -17,6 +18,8 @@ Kokoro has 82 million parameters and Apache-2.0 model weights. That makes it a r
 The weights license does not cover text-to-phoneme conversion. Kokoro's reference pipeline uses the `misaki` G2P, which falls back to espeak-ng (GPL-3.0) for out-of-vocabulary words. Record the exact phonemizer used in the Rust worker and its license before packaging. A GPL phonemizer is acceptable for private use but must be resolved before public distribution.
 
 The currently maintained Piper repository describes a local engine and carries GPL-3.0 licensing. Review the exact engine integration and each voice's license before packaging; do not assume all voice files share one license. Piper remains conditional until those decisions are recorded. [Repository](https://github.com/OHF-Voice/piper1-gpl)
+
+Pocket TTS has CC-BY-4.0 weights and reads text without a phonemizer, so it carries no GPL dependency. Its predefined voices are states made from recordings with their own licenses: `cosette` and `jean` come from CC-BY-NC-4.0 datasets and the sources of `juergen` and `rafael` are undocumented. The catalog records each voice's license; resolve these before public distribution. [Model card](https://huggingface.co/kyutai/pocket-tts)
 
 ### 7.2 Quality evaluation
 

@@ -12,6 +12,7 @@
 - [x] Add Eco/Balanced/Performance and explicit CPU/GPU selection.
 - [x] Implement unload, pressure handling, worker recovery, and bounded lookahead.
 - [ ] Add Piper only if its gates pass.
+- [x] Add Kyutai Pocket TTS English (predefined voices; user request 2026-09-26).
 
 **Gate:** the recommended quality voice passes quality/performance targets on declared hardware without making foreground work unusable; the Step 4 starter voice remains a working fallback.
 
@@ -49,3 +50,14 @@ Measured on Apple M4 (10 cores), macOS 15.1, Kokoro-82M fp32 at revision 1939ad2
 
 - [7. Local TTS strategy](../chunks/07-local-tts-and-models.md)
 - [8. Resource controls and measurable performance](../chunks/08-resource-budgets.md)
+
+### Pocket TTS — 2026-09-26
+
+Added at the user's request (huggingface.co/kyutai/pocket-tts).
+
+- Source: `kyutai/pocket-tts-without-voice-cloning` at revision a5ce31f3 (ungated; the main repo requires a Hugging Face login). One catalog model, English only (user decision 2026-09-26): 6-layer weights (219 MB, bf16), tokenizer, and all 27 predefined voices (389 MB in total). Voice cloning is not included. The worker also handles Kyutai's other languages (verified on French below); each would be a catalog entry.
+- Engine: `speakit-pocket-worker`, a Rust port of Kyutai's reference (FlowLM transformer, one-step LSD flow head, streaming Mimi decoder) on Candle with Apple Accelerate, in its own process with the same frame protocol and kill-on-cancel handling as Kokoro. No phonemizer: the model reads text, with each language's text rules from the catalog. Text is split and chunked exactly as the reference does (50-token chunks).
+- Parity with Kyutai's Python package (pocket-tts at d299fb65, torch 2.14) at temperature 0: identical sample counts; correlation 0.99999995 (English, one chunk), 0.99999999 (English, two chunks with a decimal number and clause splitting), 0.99998 (French with character replacement).
+- Measured on Apple M4, macOS 15.1 (`pocket_bench … en 4`): warm RTF 0.124–0.128 (about 8× real time); cold first sentence 1.6 s including worker start. Through the real controller and audio output (`cargo test -p speakit end_to_end_pocket -- --ignored`): first audio 2.0 s cold, 0.68 s warm. Peak memory footprint 0.58–0.60 GB; 2 and 4 threads perform the same, so Eco loses nothing. GPU: Kyutai reports no speedup on Apple Silicon; not attempted.
+- Download, verification, install marker, and the Voices screen work unchanged (English installed through the verified downloader). The worker scales down a segment whose peak exceeds 0.98 instead of letting playback clip.
+- Before public distribution: voices `cosette` and `jean` come from non-commercial datasets (CC-BY-NC-4.0), and the recordings behind `juergen` and `rafael` are undocumented. The catalog records each voice's license. Genders are set only for the 12 VCTK voices; the rest are listed under Other.

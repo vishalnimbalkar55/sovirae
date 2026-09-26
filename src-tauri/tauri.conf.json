@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.sovirae.desktop",
   "build": {
-    "beforeDevCommand": "cargo build --release -p speakit-kokoro-worker -p speakit-native-host && npm run dev",
+    "beforeDevCommand": "cargo build --release -p speakit-kokoro-worker -p speakit-pocket-worker -p speakit-native-host && npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "cargo build --release -p speakit-kokoro-worker -p speakit-native-host && npm run build",
+    "beforeBuildCommand": "cargo build --release -p speakit-kokoro-worker -p speakit-pocket-worker -p speakit-native-host && npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -66,6 +66,7 @@
       "frameworks": ["../target/release/libwebgpu_dawn.dylib"],
       "files": {
         "MacOS/speakit-kokoro-worker": "../target/release/speakit-kokoro-worker",
+        "MacOS/speakit-pocket-worker": "../target/release/speakit-pocket-worker",
         "MacOS/speakit-native-host": "../target/release/speakit-native-host"
       }
     },

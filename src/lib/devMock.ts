@@ -64,7 +64,14 @@ export function installDevMock() {
             id: `kokoro:${id}`, name, language, gender, model: "kokoro-82m-v1.0", engine: "Kokoro 82M", recommended: false,
             approximatePronunciation: id.startsWith("j") || id.startsWith("z"),
           })) : [];
-          return [...sys, ...kokoro];
+          const pocket = modelState === "installed" ? [
+            ["alba", "Alba", null], ["anna", "Anna", "female"], ["charles", "Charles", "male"], ["eve", "Eve", "female"],
+            ["george", "George", "male"], ["javert", "Javert", null], ["marius", "Marius", null],
+          ].map(([id, name, gender]) => ({
+            id: `pocket-en:${id}`, name, language: "en", gender, model: "pocket-tts-en", engine: "Pocket TTS English",
+            recommended: false, approximatePronunciation: false,
+          })) : [];
+          return [...sys, ...kokoro, ...pocket];
         }
         case "get_shortcuts": return [
           ["speakClipboard", "Command+Alt+R", false, true], ["readSelection", "Command+Alt+S", false, true],
@@ -113,6 +120,16 @@ export function installDevMock() {
             secondsLeft: modelState === "downloading" ? 17 : null,
             error: modelState === "failed" ? "The download could not be verified. Download again." : null,
             missing: [],
+          },
+          {
+            id: "pocket-tts-en", name: "Pocket TTS English",
+            description: "Kyutai's lightweight English voice with expressive, natural delivery. Runs on the processor.",
+            builtIn: false, voicePrefix: "pocket-en", license: "CC-BY-4.0",
+            licenseUrl: "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning", cardUrl: "https://huggingface.co/kyutai/pocket-tts",
+            artifacts: [{ id: "bf16", label: "Standard", description: "Kyutai's released 6-layer weights.", bytes: 219029196 }],
+            voicesBytes: 170_200_000, voiceCount: 27, voicesMissing: 0, voicesMissingBytes: 0,
+            installedArtifact: modelState === "installed" ? "bf16" : null,
+            downloading: null, progress: null, bytesPerSecond: null, secondsLeft: null, error: null, missing: [],
           },
         ];
         default: return null;

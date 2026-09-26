@@ -2,7 +2,7 @@
 
 Local read-aloud app with a floating player and a Chrome extension. Speech is
 generated on this computer: macOS system voices out of the box, and Kokoro-82M
-neural voices after a one-time download.
+or Kyutai Pocket TTS neural voices after a one-time download.
 
 The product spec lives in [`spec/`](spec/README.md); progress is tracked in the
 step files there.
@@ -49,12 +49,13 @@ if espeak-ng is absent (the app still builds; system voices still work).
 
 ### What the build contains
 
-`Sovirae.app/Contents/MacOS/` holds three programs:
+`Sovirae.app/Contents/MacOS/` holds four programs:
 
 | File | Role |
 |---|---|
 | `speakit` | The app: windows, player, shortcuts, menu bar icon |
 | `speakit-kokoro-worker` | Kokoro inference in its own process (ONNX Runtime built in) |
+| `speakit-pocket-worker` | Pocket TTS inference in its own process (Candle, Apple Accelerate) |
 | `speakit-native-host` | Connects Chrome to the app |
 
 `build/ext/` is the Chrome extension, ready for **Load unpacked** (the app also carries a copy in `Contents/Resources/ext/`).
@@ -74,13 +75,15 @@ share it, sign and notarize with an Apple Developer ID.
 | Run all tests (Rust + extension) | `npm test` |
 | Work on the UI in a browser with sample data | `npm run dev`, then open `http://localhost:1420` |
 
-Longer checks that play audio or need the Kokoro model are opt-in:
+Longer checks that play audio or need a downloaded model are opt-in:
 
 ```bash
-cargo test -p speakit -- --ignored          # real playback, including Kokoro
+cargo test -p speakit -- --ignored          # real playback, including Kokoro and Pocket TTS
 python3 scripts/check-bridge.py             # Chrome bridge, 22 checks (extension must be allowed)
 cargo run --release -p speakit-tts --example kokoro_bench -- \
   "$HOME/Library/Application Support/com.sovirae.desktop/models" fp32 /tmp/kokoro-wav
+cargo run --release -p speakit-tts --example pocket_bench -- \
+  "$HOME/Library/Application Support/com.sovirae.desktop/models" /tmp/pocket-wav
 ```
 
 ## Chrome extension
@@ -106,9 +109,10 @@ kept outside the repository in
 | `src-tauri/` | Tauri shell: session controller, shortcuts, tray, models, Chrome bridge |
 | `crates/speakit-core` | Text validation, normalization, sentence index |
 | `crates/speakit-audio` | Audio output and pitch-preserving speed |
-| `crates/speakit-tts` | System voices, Kokoro engine, phonemizer, engine registry |
+| `crates/speakit-tts` | System voices, Kokoro and Pocket TTS engines, phonemizer, engine registry |
 | `crates/speakit-models` | Model catalog (`catalog/models.json`) and verified downloads |
 | `crates/speakit-protocol` | Chrome bridge message format |
 | `workers/speakit-kokoro-worker` | Isolated ONNX inference process |
+| `workers/speakit-pocket-worker` | Isolated Pocket TTS inference process (Rust port of Kyutai's model) |
 | `workers/speakit-native-host` | Chrome native messaging relay |
 | `ext/` | Chrome MV3 extension |

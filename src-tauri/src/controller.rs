@@ -1161,6 +1161,46 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "needs the installed Pocket TTS English model and plays audio"]
+    fn end_to_end_pocket() {
+        use speakit_models::Store;
+        use speakit_tts::pocket::{PocketConfig, PocketEngine, PocketVoice};
+        let model = speakit_models::find("pocket-tts-en").unwrap();
+        let root = std::path::PathBuf::from(std::env::var("HOME").unwrap())
+            .join("Library/Application Support/com.sovirae.desktop/models");
+        let installed = Store::new(root).installed(model).expect("Pocket TTS English installed");
+        let worker_bin = std::env::current_dir().unwrap().join("../target/release/speakit-pocket-worker");
+        let voices = model.voices.iter().map(|v| PocketVoice {
+            id: v.id.clone(), label: v.label.clone(), language: v.language.clone(), gender: v.gender.clone(), file: installed.voice_file(&v.id),
+        }).collect();
+        let registry = Arc::new(speakit_tts::Registry::new(speakit_tts::system_engine()));
+        registry.set_model(&model.voice_prefix, Some(Arc::new(PocketEngine::new(PocketConfig {
+            model_id: model.id.clone(), model_name: model.name.clone(), voice_prefix: model.voice_prefix.clone(),
+            model_file: installed.model_file.clone(), tokenizer_file: installed.support_file(&model.files[0]), worker_bin,
+            voices, threads: 4, options: model.options.clone(), model_rate: model.sample_rate,
+        }))));
+        let host = TestHost::default();
+        let c = spawn(registry.clone(), Config { match_language: true, rate: 1.0, volume: 0.15, voice: Some("pocket-en:alba".into()), profile: ResourceProfile::Balanced }, host.clone());
+
+        c.send(request(TEXT));
+        let first = host.wait_for(Duration::from_secs(15), |s| s.status == PlaybackStatus::Playing).expect("plays");
+        println!("Pocket TTS first audible output (cold worker) after {first:?}");
+        assert_eq!(host.last().voice.as_deref(), Some("Alba"));
+        assert_eq!(host.last().device, "CPU");
+        std::thread::sleep(Duration::from_millis(2500));
+        assert!(host.last().position_ms > 1500, "position advances");
+        assert!(host.0.lock().unwrap().notices.is_empty(), "no errors");
+
+        c.send(request("A second, warm reading starts faster."));
+        let warm = host.wait_for(Duration::from_secs(5), |s| s.status == PlaybackStatus::Playing && s.session_id >= 2).expect("replacement plays");
+        println!("Pocket TTS first audible output (warm) after {warm:?}");
+        std::thread::sleep(Duration::from_millis(1500));
+        c.send(Command::Stop);
+        host.wait_for(Duration::from_secs(1), |s| s.status == PlaybackStatus::Idle).expect("stops");
+        c.send(Command::Shutdown);
+    }
+
+    #[test]
     #[ignore = "needs the installed Kokoro model"]
     fn installed_kokoro_lists_every_catalog_voice() {
         use speakit_models::Store;

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the complete Sovirae project: checks prerequisites, installs
 # JavaScript packages, runs every test, then bundles the macOS app and DMG
-# (app + Kokoro worker + Chrome native host + Chrome extension), and
+# (app + Kokoro and Pocket TTS workers + Chrome native host + Chrome extension), and
 # gathers them into build/app and build/ext.
 #
 #   scripts/build.sh              full build with tests
@@ -41,7 +41,7 @@ npx tauri build
 
 APP="target/release/bundle/macos/Sovirae.app"
 DMG=$(ls target/release/bundle/dmg/*.dmg 2>/dev/null | head -1)
-for f in speakit speakit-kokoro-worker speakit-native-host; do
+for f in speakit speakit-kokoro-worker speakit-pocket-worker speakit-native-host; do
   [[ -x "$APP/Contents/MacOS/$f" ]] || fail "$f is missing from the bundle."
 done
 # The Kokoro worker links WebGPU (Dawn) for GPU voices and cannot start without it.

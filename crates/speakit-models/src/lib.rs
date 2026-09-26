@@ -79,6 +79,11 @@ impl Installed {
     pub fn voice_file(&self, voice: &str) -> PathBuf {
         self.dir.join("voices").join(format!("{voice}.bin"))
     }
+
+    /// Where a model-level support file (`ModelSpec::files`) is stored.
+    pub fn support_file(&self, file: &FileSpec) -> PathBuf {
+        self.dir.join(file_name(&file.path))
+    }
 }
 
 pub struct Store {
@@ -102,8 +107,10 @@ impl Store {
             let marker: InstalledMarker =
                 serde_json::from_slice(&std::fs::read(dir.join("installed.json")).ok()?).ok()?;
             let model_file = dir.join(file_name(&a.file.path));
-            let ok = marker.revision == model.revision
-                && std::fs::metadata(&model_file).map(|m| m.len() == a.file.bytes).unwrap_or(false);
+            let complete = |f: &FileSpec| {
+                std::fs::metadata(dir.join(file_name(&f.path))).map(|m| m.len() == f.bytes).unwrap_or(false)
+            };
+            let ok = marker.revision == model.revision && complete(&a.file) && model.files.iter().all(complete);
             ok.then_some(Installed { marker, dir, model_file })
         })
     }
@@ -126,6 +133,9 @@ impl Store {
         std::fs::create_dir_all(dir.join("voices"))?;
 
         let mut files: Vec<(&FileSpec, PathBuf)> = vec![(&artifact.file, dir.join(file_name(&artifact.file.path)))];
+        for f in &model.files {
+            files.push((f, dir.join(file_name(&f.path))));
+        }
         for v in &model.voices {
             files.push((&v.file, dir.join("voices").join(format!("{}.bin", v.id))));
         }

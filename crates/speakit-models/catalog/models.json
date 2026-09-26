@@ -713,6 +713,352 @@
           }
         }
       ]
+    },
+    {
+      "id": "pocket-tts-en",
+      "name": "Pocket TTS English",
+      "family": "pocket",
+      "voicePrefix": "pocket-en",
+      "description": "Kyutai's lightweight English voice with expressive, natural delivery. Runs on the processor.",
+      "repo": "kyutai/pocket-tts-without-voice-cloning",
+      "revision": "a5ce31f3eba7a3b0cb9c24ba2015b098f278eaae",
+      "license": "CC-BY-4.0",
+      "licenseUrl": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning",
+      "cardUrl": "https://huggingface.co/kyutai/pocket-tts",
+      "sampleRate": 24000,
+      "files": [
+        {
+          "path": "languages/english/tokenizer.json",
+          "bytes": 245020,
+          "sha256": "f498428e1eafee50492f7be13dc9bfafcfc12e508cd0eb1b01c92ecd5d8c6687"
+        }
+      ],
+      "options": {
+        "temperature": 0.3
+      },
+      "artifacts": [
+        {
+          "id": "bf16",
+          "label": "Standard",
+          "description": "Kyutai's released 6-layer weights.",
+          "file": {
+            "path": "languages/english/model.safetensors",
+            "bytes": 219029196,
+            "sha256": "916ccd2686e9311cb40054893a3c4284393d658825ffc714a276f3e9b152344f"
+          }
+        }
+      ],
+      "voices": [
+        {
+          "id": "alba",
+          "label": "Alba",
+          "language": "en",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/alba.safetensors",
+            "bytes": 6195000,
+            "sha256": "d291428b416d6c36a1de7835e51dbe1e334b75e5af512bb18dd23a1047fe8f3b"
+          }
+        },
+        {
+          "id": "anna",
+          "label": "Anna",
+          "language": "en",
+          "gender": "female",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/anna.safetensors",
+            "bytes": 7817016,
+            "sha256": "80b3c36dc29aa1acd09ed522099142c5236789c8c5e87b2a30523175772a531c"
+          }
+        },
+        {
+          "id": "azelma",
+          "label": "Azelma",
+          "language": "en",
+          "gender": "female",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/azelma.safetensors",
+            "bytes": 7964472,
+            "sha256": "1592ba7eb6784302ccaa8d48a7304f14f6fd7503969fb0466efcab607827477c"
+          }
+        },
+        {
+          "id": "bill_boerst",
+          "label": "Bill Boerst",
+          "language": "en",
+          "license": "CC0-1.0",
+          "file": {
+            "path": "languages/english/embeddings/bill_boerst.safetensors",
+            "bytes": 6735672,
+            "sha256": "b4fb8f505ba23d5ace1b86210a4a26dd9da735463faf213c8b1f16dfd597debd"
+          }
+        },
+        {
+          "id": "caro_davy",
+          "label": "Caro Davy",
+          "language": "en",
+          "license": "CC0-1.0",
+          "file": {
+            "path": "languages/english/embeddings/caro_davy.safetensors",
+            "bytes": 5261112,
+            "sha256": "6361bef0343a04a1c9947d624c21b1ee3d0f430a332a50c2f32a992e55b2922b"
+          }
+        },
+        {
+          "id": "charles",
+          "label": "Charles",
+          "language": "en",
+          "gender": "male",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/charles.safetensors",
+            "bytes": 6195000,
+            "sha256": "f6c03e29e9b17708f24ef3aaab0af92d9c11565c0997ee8c8271cacc72cfe53a"
+          }
+        },
+        {
+          "id": "cosette",
+          "label": "Cosette",
+          "language": "en",
+          "license": "CC-BY-NC-4.0",
+          "file": {
+            "path": "languages/english/embeddings/cosette.safetensors",
+            "bytes": 6195000,
+            "sha256": "90f7a535c7c8774b8f5c28b841b0b93e1c55ef45e31f688021ad067fd2ac97f7"
+          }
+        },
+        {
+          "id": "daan",
+          "label": "Daan",
+          "language": "en",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/daan.safetensors",
+            "bytes": 4228912,
+            "sha256": "fe84a4e36ecfefc5d629f4f56e82b77a3428f6447f59698a8fc987920ad44991"
+          }
+        },
+        {
+          "id": "eponine",
+          "label": "Eponine",
+          "language": "en",
+          "gender": "female",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/eponine.safetensors",
+            "bytes": 6932280,
+            "sha256": "0bcc4878ad3183ef8bfdbaf9224c5a71f1d18fe944fb494818c37e1f8ea6c7d0"
+          }
+        },
+        {
+          "id": "estelle",
+          "label": "Estelle",
+          "language": "en",
+          "license": "CC0-1.0",
+          "file": {
+            "path": "languages/english/embeddings/estelle.safetensors",
+            "bytes": 8259384,
+            "sha256": "62bcdb95745e71c60259974ac8547557fa23cece479bf6cc88d68cb84a970cdc"
+          }
+        },
+        {
+          "id": "eve",
+          "label": "Eve",
+          "language": "en",
+          "gender": "female",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/eve.safetensors",
+            "bytes": 6539064,
+            "sha256": "ec2bf13d4ac4bcee200ee7aec1deae8132bb5bd60233f815e12a4d8efe56b8c6"
+          }
+        },
+        {
+          "id": "fantine",
+          "label": "Fantine",
+          "language": "en",
+          "gender": "female",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/fantine.safetensors",
+            "bytes": 6539064,
+            "sha256": "8b6a1c253d39c701e7b70e349796d10b4ce6f35bc58254f0e0caa572f1d41464"
+          }
+        },
+        {
+          "id": "george",
+          "label": "George",
+          "language": "en",
+          "gender": "male",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/george.safetensors",
+            "bytes": 6244152,
+            "sha256": "9cee0daccb0eda1631b73f8b35f6f8cb195885d55d2e1e20fc711f9e4456ceb0"
+          }
+        },
+        {
+          "id": "giovanni",
+          "label": "Giovanni",
+          "language": "en",
+          "license": "CC0-1.0",
+          "file": {
+            "path": "languages/english/embeddings/giovanni.safetensors",
+            "bytes": 4622128,
+            "sha256": "1946323aae7326b3ed28bf11e3fe1b80009f93d957cf4058e01ca9473dcdda82"
+          }
+        },
+        {
+          "id": "jane",
+          "label": "Jane",
+          "language": "en",
+          "gender": "female",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/jane.safetensors",
+            "bytes": 7374648,
+            "sha256": "fe0e73c3a01f9d3b344ce19c912654df1464cb4077393e188d54f6cff990c05f"
+          }
+        },
+        {
+          "id": "javert",
+          "label": "Javert",
+          "language": "en",
+          "license": "CC0-1.0",
+          "file": {
+            "path": "languages/english/embeddings/javert.safetensors",
+            "bytes": 6195000,
+            "sha256": "580e4b72d4065e906c14e580f97da478c9707bead74b0ef9c049e0ca8de997d9"
+          }
+        },
+        {
+          "id": "jean",
+          "label": "Jean",
+          "language": "en",
+          "license": "CC-BY-NC-4.0",
+          "file": {
+            "path": "languages/english/embeddings/jean.safetensors",
+            "bytes": 6195000,
+            "sha256": "397583373a34c22781000a8d33e5cdceca30501368376605539b3e805bc8a837"
+          }
+        },
+        {
+          "id": "juergen",
+          "label": "Juergen",
+          "language": "en",
+          "license": "unverified",
+          "file": {
+            "path": "languages/english/embeddings/juergen.safetensors",
+            "bytes": 6244152,
+            "sha256": "f0f646ef516498b631a793d1663126a002480efcdc4607d3c8cbf17a9497e306"
+          }
+        },
+        {
+          "id": "lola",
+          "label": "Lola",
+          "language": "en",
+          "license": "CC0-1.0",
+          "file": {
+            "path": "languages/english/embeddings/lola.safetensors",
+            "bytes": 5949240,
+            "sha256": "4785d8810a75487fe761260a8c496f4f69ef17cc3281e9dd0073c79c71fb2d91"
+          }
+        },
+        {
+          "id": "marius",
+          "label": "Marius",
+          "language": "en",
+          "license": "CC0-1.0",
+          "file": {
+            "path": "languages/english/embeddings/marius.safetensors",
+            "bytes": 6195000,
+            "sha256": "b05946f39371f8853902b0486231f2d401c8a9570da9978329120d4ecfd009e9"
+          }
+        },
+        {
+          "id": "mary",
+          "label": "Mary",
+          "language": "en",
+          "gender": "female",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/mary.safetensors",
+            "bytes": 6195000,
+            "sha256": "8eaed3701d6ba5602393b50876f6639d3ed5d7aacc356a3ee6337957a7cbe9d2"
+          }
+        },
+        {
+          "id": "michael",
+          "label": "Michael",
+          "language": "en",
+          "gender": "male",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/michael.safetensors",
+            "bytes": 7276344,
+            "sha256": "401711f60394aa6085627f7050c1b3f97b31aa7138784811bc6c6ec7d7eaad0c"
+          }
+        },
+        {
+          "id": "paul",
+          "label": "Paul",
+          "language": "en",
+          "gender": "male",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/paul.safetensors",
+            "bytes": 6981432,
+            "sha256": "400ea75cecbe796e6adab3526264acd7ca3f3cb39f9785f531f194bdc3b26007"
+          }
+        },
+        {
+          "id": "peter_yearsley",
+          "label": "Peter Yearsley",
+          "language": "en",
+          "license": "CC0-1.0",
+          "file": {
+            "path": "languages/english/embeddings/peter_yearsley.safetensors",
+            "bytes": 3737392,
+            "sha256": "bbaf032c5887c5620f46e3d9dd213d97c9d3277a687d2944107eaa535e1d3483"
+          }
+        },
+        {
+          "id": "rafael",
+          "label": "Rafael",
+          "language": "en",
+          "license": "unverified",
+          "file": {
+            "path": "languages/english/embeddings/rafael.safetensors",
+            "bytes": 6195000,
+            "sha256": "2744645bef8bd8d106799b4280de6872dc83c00222b83e3f420b7bf6e6fb679f"
+          }
+        },
+        {
+          "id": "stuart_bell",
+          "label": "Stuart Bell",
+          "language": "en",
+          "license": "CC0-1.0",
+          "file": {
+            "path": "languages/english/embeddings/stuart_bell.safetensors",
+            "bytes": 5261112,
+            "sha256": "c560ae214a3f5e52648839a01222da245b82d834dc02f611a04154319ad1434f"
+          }
+        },
+        {
+          "id": "vera",
+          "label": "Vera",
+          "language": "en",
+          "gender": "female",
+          "license": "CC-BY-4.0",
+          "file": {
+            "path": "languages/english/embeddings/vera.safetensors",
+            "bytes": 6735672,
+            "sha256": "3a9d4a9237d8615b5c3d10610b16a3037edb163cc18df42f138bfbc1f2beb7a3"
+          }
+        }
+      ]
     }
   ]
 }

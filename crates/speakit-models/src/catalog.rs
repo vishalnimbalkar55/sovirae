@@ -16,6 +16,7 @@ const CATALOG_JSON: &str = include_str!("../catalog/models.json");
 #[serde(rename_all = "kebab-case")]
 pub enum Family {
     Kokoro,
+    Pocket,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -44,11 +45,16 @@ pub struct VoiceSpec {
     pub language: String,
     /// `female`, `male`, or absent when the provider does not say.
     pub gender: Option<String>,
-    /// Phonemizer language (an espeak-ng voice such as `en-us` or `cmn`).
+    /// Phonemizer language (an espeak-ng voice such as `en-us` or `cmn`),
+    /// for families that phonemize text.
+    #[serde(default)]
     pub g2p: String,
     /// `approximate` when this build's phonemizer is not the model's
     /// reference pipeline for the language.
     pub pronunciation: Option<String>,
+    /// License of the recording the voice was made from, when it differs
+    /// from the model's (SPDX ID, or `unverified`).
+    pub license: Option<String>,
     pub file: FileSpec,
 }
 
@@ -71,6 +77,12 @@ pub struct ModelSpec {
     /// External tools the family needs, e.g. `espeak-ng`.
     #[serde(default)]
     pub requires: Vec<String>,
+    /// Files every artifact needs, e.g. a tokenizer.
+    #[serde(default)]
+    pub files: Vec<FileSpec>,
+    /// Engine settings for this model, passed to its worker as JSON.
+    #[serde(default)]
+    pub options: serde_json::Map<String, serde_json::Value>,
     pub artifacts: Vec<Artifact>,
     pub voices: Vec<VoiceSpec>,
 }
@@ -128,7 +140,7 @@ mod tests {
             assert!(!m.voice_prefix.contains(':') && !m.voice_prefix.is_empty());
             assert_eq!(m.revision.len(), 40, "{}: pin a full commit", m.id);
             assert!(!m.artifacts.is_empty() && !m.voices.is_empty(), "{}", m.id);
-            let files = m.artifacts.iter().map(|a| &a.file).chain(m.voices.iter().map(|v| &v.file));
+            let files = m.artifacts.iter().map(|a| &a.file).chain(&m.files).chain(m.voices.iter().map(|v| &v.file));
             for f in files {
                 assert_eq!(f.sha256.len(), 64, "{}", f.path);
                 assert!(f.sha256.chars().all(|c| c.is_ascii_hexdigit()), "{}", f.path);
@@ -136,12 +148,29 @@ mod tests {
                 assert!(!f.path.contains(".."), "{}", f.path);
             }
             let mut voice_ids = HashSet::new();
+            // Support files land next to the model file, so names must differ.
+            let mut names: Vec<&str> = m.files.iter().map(|f| f.path.rsplit('/').next().unwrap()).collect();
+            names.extend(m.artifacts.iter().map(|a| a.file.path.rsplit('/').next().unwrap()));
+            assert_eq!(names.len(), names.iter().collect::<HashSet<_>>().len(), "{}: file names collide", m.id);
             for v in &m.voices {
                 assert!(voice_ids.insert(&v.id), "{}: duplicate voice {}", m.id, v.id);
-                assert!(v.language.contains('-'), "{}: {}", m.id, v.language);
+                // BCP-47: a language, optionally with a region (`en`, `en-US`).
+                let (lang, region) = v.language.split_once('-').unwrap_or((&v.language, "US"));
+                assert!(matches!(lang.len(), 2 | 3) && lang.chars().all(|c| c.is_ascii_lowercase()), "{}: {}", m.id, v.language);
+                assert!(region.len() == 2 && region.chars().all(|c| c.is_ascii_uppercase()), "{}: {}", m.id, v.language);
                 assert!(matches!(v.gender.as_deref(), None | Some("female") | Some("male")));
-                assert!(!v.g2p.is_empty(), "{}: {} needs a phonemizer language", m.id, v.id);
+                if m.family == Family::Kokoro {
+                    assert!(!v.g2p.is_empty(), "{}: {} needs a phonemizer language", m.id, v.id);
+                }
                 assert!(matches!(v.pronunciation.as_deref(), None | Some("approximate")));
+                if let Some(l) = &v.license {
+                    assert!(!l.is_empty() && !l.contains(' '), "{}: {} license {l}", m.id, v.id);
+                }
+            }
+            if m.family == Family::Pocket {
+                assert_eq!(m.files.len(), 1, "{}: needs its tokenizer", m.id);
+                assert!(m.files[0].path.ends_with("tokenizer.json"), "{}", m.id);
+                assert!(m.voices.iter().all(|v| v.file.path.ends_with(".safetensors")), "{}", m.id);
             }
         }
         let k = find("kokoro-82m-v1.0").unwrap();
@@ -151,6 +180,20 @@ mod tests {
         assert_eq!(k.voices.len(), 55);
         for id in ["am_echo", "am_eric", "ef_dora", "jf_alpha", "zf_xiaoxiao", "hf_alpha", "pm_alex"] {
             assert!(k.voices.iter().any(|v| v.id == id), "missing {id}");
+        }
+
+        // Pocket TTS: English only (user decision), with all 27 voices and
+        // Kyutai's default voice first.
+        let pocket: Vec<_> = models.iter().filter(|m| m.family == Family::Pocket).collect();
+        assert_eq!(pocket.len(), 1);
+        let en = find("pocket-tts-en").unwrap();
+        assert_eq!(en.voice_prefix, "pocket-en");
+        assert_eq!(en.voices.len(), 27);
+        assert_eq!(en.voices[0].id, "alba");
+        assert!(en.voices.iter().all(|v| v.language == "en" && v.license.is_some()));
+        // Recordings from non-commercial datasets are marked as such.
+        for id in ["cosette", "jean"] {
+            assert_eq!(en.voices.iter().find(|v| v.id == id).unwrap().license.as_deref(), Some("CC-BY-NC-4.0"));
         }
     }
 }

@@ -10,6 +10,7 @@ use serde::Serialize;
 use speakit_models::{Cancel, Family, Installed, ModelError, ModelSpec, Progress, Store};
 use speakit_tts::espeak::Phonemizer;
 use speakit_tts::kokoro::{KokoroConfig, KokoroEngine, KokoroVoice};
+use speakit_tts::pocket::{PocketConfig, PocketEngine, PocketVoice};
 use speakit_tts::{Engine, Registry};
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -106,15 +107,22 @@ pub fn store(app: &AppHandle) -> Store {
     Store::new(dir)
 }
 
-/// The Kokoro worker ships next to the app executable; in development it is
-/// built into the release target directory.
-pub fn worker_bin() -> Option<PathBuf> {
+/// Inference workers ship next to the app executable; in development they
+/// are built into the release target directory.
+pub fn worker_bin(worker: &str) -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
-    let name = if cfg!(windows) { "speakit-kokoro-worker.exe" } else { "speakit-kokoro-worker" };
-    [dir.join(name), dir.join("../release").join(name), dir.join("../debug").join(name)]
+    let name = if cfg!(windows) { format!("{worker}.exe") } else { worker.to_string() };
+    [dir.join(&name), dir.join("../release").join(&name), dir.join("../debug").join(&name)]
         .into_iter()
         .find(|p| p.is_file())
+}
+
+fn worker_for(family: Family) -> &'static str {
+    match family {
+        Family::Kokoro => "speakit-kokoro-worker",
+        Family::Pocket => "speakit-pocket-worker",
+    }
 }
 
 /// Inference threads for a profile (spec §8.2).
@@ -130,12 +138,8 @@ pub fn threads_for(profile: ResourceProfile) -> usize {
 /// What this computer lacks to run a model family.
 fn missing(model: &ModelSpec) -> Vec<String> {
     let mut out = Vec::new();
-    match model.family {
-        Family::Kokoro => {
-            if worker_bin().is_none() {
-                out.push("voice engine".into());
-            }
-        }
+    if worker_bin(worker_for(model.family)).is_none() {
+        out.push("voice engine".into());
     }
     if model.requires.iter().any(|r| r == "espeak-ng") && Phonemizer::find().is_none() {
         out.push("espeak-ng".into());
@@ -165,10 +169,35 @@ fn engine_for(model: &ModelSpec, installed: &Installed, profile: ResourceProfile
                 model_name: model.name.clone(),
                 voice_prefix: model.voice_prefix.clone(),
                 model_file: installed.model_file.clone(),
-                worker_bin: worker_bin()?,
+                worker_bin: worker_bin(worker_for(model.family))?,
                 voices,
                 threads: threads_for(profile),
                 gpu: processor == Processor::Gpu,
+                model_rate: model.sample_rate,
+            })))
+        }
+        Family::Pocket => {
+            let voices = model
+                .voices
+                .iter()
+                .map(|v| PocketVoice {
+                    id: v.id.clone(),
+                    label: v.label.clone(),
+                    language: v.language.clone(),
+                    gender: v.gender.clone(),
+                    file: installed.voice_file(&v.id),
+                })
+                .collect();
+            Some(Arc::new(PocketEngine::new(PocketConfig {
+                model_id: model.id.clone(),
+                model_name: model.name.clone(),
+                voice_prefix: model.voice_prefix.clone(),
+                model_file: installed.model_file.clone(),
+                tokenizer_file: installed.support_file(model.files.first()?),
+                worker_bin: worker_bin(worker_for(model.family))?,
+                voices,
+                threads: threads_for(profile),
+                options: model.options.clone(),
                 model_rate: model.sample_rate,
             })))
         }

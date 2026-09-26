@@ -6,16 +6,15 @@
 //! or fails while reading, the engine records why and continues on the CPU
 //! until the setting changes (spec §7.3).
 
-use std::io::{Read, Write};
 use std::path::PathBuf;
-use std::process::{Child, ChildStdin, Command, Stdio};
+use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use crate::espeak::Phonemizer;
 use crate::resample::resample;
+use crate::worker::{self, WorkerProc};
 use crate::{CancelToken, Engine, Pcm, TtsError, VoiceInfo};
 
 const LOAD_TIMEOUT: Duration = Duration::from_secs(60);
@@ -51,26 +50,6 @@ pub struct KokoroConfig {
     /// Ask the worker for the GPU provider (WebGPU on Apple Silicon).
     pub gpu: bool,
     pub model_rate: u32,
-}
-
-struct Frame {
-    id: u64,
-    status: u32,
-    payload: Vec<u8>,
-}
-
-struct WorkerProc {
-    device: &'static str,
-    child: Child,
-    stdin: ChildStdin,
-    frames: Receiver<Frame>,
-}
-
-impl Drop for WorkerProc {
-    fn drop(&mut self) {
-        let _ = self.child.kill();
-        let _ = self.child.wait();
-    }
 }
 
 pub struct KokoroEngine {
@@ -122,49 +101,14 @@ impl KokoroEngine {
 
     fn spawn(&self, gpu: bool, cancel: &CancelToken) -> Result<WorkerProc, TtsError> {
         let c = self.config.lock().unwrap().clone();
-        let mut child = Command::new(&c.worker_bin)
-            .arg("--model")
+        let mut cmd = Command::new(&c.worker_bin);
+        cmd.arg("--model")
             .arg(&c.model_file)
             .arg("--threads")
             .arg(c.threads.to_string())
             .arg("--device")
-            .arg(if gpu { "gpu" } else { "cpu" })
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .map_err(|e| TtsError::Engine(format!("the voice worker could not start: {e}")))?;
-        let stdin = child.stdin.take().expect("piped stdin");
-        let mut stdout = child.stdout.take().expect("piped stdout");
-        let (tx, frames) = mpsc::channel();
-        std::thread::Builder::new()
-            .name("kokoro-reader".into())
-            .spawn(move || loop {
-                let mut header = [0u8; 16];
-                if stdout.read_exact(&mut header).is_err() {
-                    break;
-                }
-                let id = u64::from_le_bytes(header[0..8].try_into().unwrap());
-                let status = u32::from_le_bytes(header[8..12].try_into().unwrap());
-                let len = u32::from_le_bytes(header[12..16].try_into().unwrap()) as usize;
-                let bytes = if status == 0 { len * 4 } else { len };
-                let mut payload = vec![0u8; bytes];
-                if stdout.read_exact(&mut payload).is_err() {
-                    break;
-                }
-                if tx.send(Frame { id, status, payload }).is_err() {
-                    break;
-                }
-            })
-            .map_err(|e| TtsError::Engine(e.to_string()))?;
-
-        let mut proc = WorkerProc { device: "CPU", child, stdin, frames };
-        let ready = wait_frame(&mut proc, 0, cancel, LOAD_TIMEOUT)?;
-        if ready.status != 2 {
-            return Err(TtsError::Engine(String::from_utf8_lossy(&ready.payload).into_owned()));
-        }
-        // Label the session with what the worker loaded, not what was asked.
-        proc.device = if ready.payload == b"GPU" { "GPU" } else { "CPU" };
+            .arg(if gpu { "gpu" } else { "cpu" });
+        let proc = WorkerProc::spawn(cmd, "kokoro", cancel, LOAD_TIMEOUT)?;
         *self.device.lock().unwrap() = proc.device;
         Ok(proc)
     }
@@ -184,12 +128,11 @@ impl KokoroEngine {
             "speed": 1.0,
         });
         let proc = guard.as_mut().unwrap();
-        let sent = writeln!(proc.stdin, "{req}").and_then(|_| proc.stdin.flush());
-        if sent.is_err() {
+        if let Err(e) = proc.send(&req) {
             *guard = None;
-            return Err(TtsError::Engine("the voice worker stopped unexpectedly".into()));
+            return Err(e);
         }
-        let frame = match wait_frame(proc, id, cancel, SYNTH_TIMEOUT) {
+        let frame = match proc.wait(id, cancel, SYNTH_TIMEOUT) {
             Ok(f) => f,
             Err(e) => {
                 // Cancelled or failed: native inference may not stop on its
@@ -205,32 +148,7 @@ impl KokoroEngine {
             return Err(TtsError::Engine(String::from_utf8_lossy(&frame.payload).into_owned()));
         }
         drop(guard);
-        Ok(frame
-            .payload
-            .chunks_exact(4)
-            .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
-            .collect())
-    }
-}
-
-fn wait_frame(proc: &mut WorkerProc, id: u64, cancel: &CancelToken, timeout: Duration) -> Result<Frame, TtsError> {
-    let start = Instant::now();
-    loop {
-        if cancel.is_cancelled() {
-            return Err(TtsError::Cancelled);
-        }
-        match proc.frames.recv_timeout(Duration::from_millis(15)) {
-            Ok(f) if f.id == id || f.status == 2 || (f.id == 0 && f.status == 1) => return Ok(f),
-            Ok(_) => continue, // stale reply to a cancelled request
-            Err(RecvTimeoutError::Timeout) => {
-                if start.elapsed() > timeout {
-                    return Err(TtsError::Engine("the voice worker stopped responding".into()));
-                }
-            }
-            Err(RecvTimeoutError::Disconnected) => {
-                return Err(TtsError::Engine("the voice worker stopped unexpectedly".into()));
-            }
-        }
+        Ok(worker::samples(&frame.payload))
     }
 }
 

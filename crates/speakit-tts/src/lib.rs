@@ -12,7 +12,9 @@ pub mod espeak;
 pub mod kokoro;
 #[cfg(target_os = "macos")]
 pub mod macos_say;
+pub mod pocket;
 pub mod resample;
+mod worker;
 
 #[derive(Debug, Error)]
 pub enum TtsError {
