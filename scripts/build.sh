@@ -44,6 +44,8 @@ DMG=$(ls target/release/bundle/dmg/*.dmg 2>/dev/null | head -1)
 for f in speakit speakit-kokoro-worker speakit-native-host; do
   [[ -x "$APP/Contents/MacOS/$f" ]] || fail "$f is missing from the bundle."
 done
+# The Kokoro worker links WebGPU (Dawn) for GPU voices and cannot start without it.
+[[ -f "$APP/Contents/Frameworks/libwebgpu_dawn.dylib" ]] || fail "libwebgpu_dawn.dylib is missing from the bundle."
 [[ -f "$APP/Contents/Resources/ext/manifest.json" ]] || fail "The Chrome extension is missing from the bundle."
 
 step "Collecting outputs into build/"

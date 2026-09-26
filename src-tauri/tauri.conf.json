@@ -63,6 +63,7 @@
     ],
     "macOS": {
       "minimumSystemVersion": "13.0",
+      "frameworks": ["../target/release/libwebgpu_dawn.dylib"],
       "files": {
         "MacOS/speakit-kokoro-worker": "../target/release/speakit-kokoro-worker",
         "MacOS/speakit-native-host": "../target/release/speakit-native-host"

@@ -67,6 +67,15 @@ export type PlayerLine = "wave" | "ticker" | "steps" | "meter" | "breathing";
 
 export type ResourceProfile = "eco" | "balanced" | "performance";
 
+/** Where downloaded voices run. System voices are always run by the OS. */
+export type Processor = "cpu" | "gpu";
+
+export interface ProcessorStatus {
+  gpuAvailable: boolean;
+  /** Why the GPU was requested but the CPU is in use. */
+  fallback: string | null;
+}
+
 export interface Settings {
   theme: "system" | "light" | "dark";
   readingFontSize: number;
@@ -75,6 +84,7 @@ export interface Settings {
   volume: number;
   voice: string | null;
   resourceProfile: ResourceProfile;
+  processor: Processor;
   startAtLogin: boolean;
   keepRunning: boolean;
   startMinimized: boolean;

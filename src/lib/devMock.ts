@@ -14,7 +14,7 @@ export function installDevMock() {
   const state = params.get("state") ?? "playing";
   const settings = {
     theme: params.get("theme") ?? "system", readingFontSize: 18, readingFont: "serif", rate: 1.2, volume: 0.8,
-    voice: "Samantha" as string | null, resourceProfile: "balanced", startAtLogin: false, keepRunning: true, startMinimized: false,
+    voice: "Samantha" as string | null, resourceProfile: "balanced", processor: params.get("processor") ?? "cpu", startAtLogin: false, keepRunning: true, startMinimized: false,
     hotkeysPaused: false, sentenceSnap: false, followReading: true, playerTopmost: true,
     playerLine: params.get("line") ?? "wave",
     chromeBridge: true, pairedExtensions: [] as string[], matchPageLanguage: true,
@@ -43,6 +43,7 @@ export function installDevMock() {
     (cmd, args) => {
       switch (cmd) {
         case "get_state": return { settings, snapshot, platform: "macos", engine: "macos-system" };
+        case "processor_status": return { gpuAvailable: true, fallback: params.get("gpuFallback") };
         case "get_document": return { sessionId: 3, text: SAMPLE, segments };
         case "list_voices": {
           const sys = [

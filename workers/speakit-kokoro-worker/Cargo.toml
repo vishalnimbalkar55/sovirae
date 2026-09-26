@@ -9,3 +9,8 @@ description = "Isolated Kokoro ONNX inference process"
 serde.workspace = true
 serde_json.workspace = true
 ort = { version = "=2.0.0-rc.13", default-features = false, features = ["std", "download-binaries", "copy-dylibs", "tls-rustls", "api-27"] }
+
+[target.'cfg(all(target_os = "macos", target_arch = "aarch64"))'.dependencies]
+# GPU path (Metal via Dawn). Links libwebgpu_dawn.dylib, which ships next to
+# the worker; see build.rs for the search path.
+ort = { version = "=2.0.0-rc.13", default-features = false, features = ["webgpu"] }

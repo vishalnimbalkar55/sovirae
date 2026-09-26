@@ -1,14 +1,15 @@
 //! Isolated Kokoro-82M inference process (spec §5.1, §8.2).
 //!
-//! The desktop app starts this worker with a fixed model path and thread
-//! count, sends one JSON request per line on stdin, and reads binary frames
+//! The desktop app starts this worker with a fixed model path, thread
+//! count, and device, sends one JSON request per line on stdin, and reads binary frames
 //! from stdout. If inference hangs or crashes, the app kills the process and
 //! the UI keeps running.
 //!
 //! Frame: u64 request id | u32 status | u32 length | payload (little-endian)
 //!   status 0: `length` f32 samples of 24 kHz mono audio
 //!   status 1: `length` bytes of UTF-8 error text
-//!   status 2: ready (sent once after the model loads, length 0)
+//!   status 2: ready (sent once after the model loads); payload is the
+//!             UTF-8 name of the device in use, e.g. `CPU` or `GPU`
 
 mod vocab;
 
@@ -36,6 +37,7 @@ struct Request {
 
 struct Worker {
     session: Session,
+    device: &'static str,
     ids_name: String,
     style_name: String,
     speed_name: String,
@@ -47,21 +49,22 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let arg = |name: &str| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned();
     let Some(model) = arg("--model").map(PathBuf::from) else {
-        eprintln!("usage: speakit-kokoro-worker --model <path> [--threads <n>]");
+        eprintln!("usage: speakit-kokoro-worker --model <path> [--threads <n>] [--device cpu|gpu]");
         std::process::exit(2);
     };
     let threads = arg("--threads").and_then(|t| t.parse::<usize>().ok()).unwrap_or(2).max(1);
+    let gpu = arg("--device").is_some_and(|d| d == "gpu");
 
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
-    let mut worker = match Worker::load(&model, threads) {
+    let mut worker = match Worker::load(&model, threads, gpu) {
         Ok(w) => w,
         Err(e) => {
             write_error(&mut out, 0, &format!("The voice model could not be loaded: {e}"));
             std::process::exit(1);
         }
     };
-    write_frame(&mut out, 0, 2, &[]);
+    write_frame(&mut out, 0, 2, worker.device.as_bytes());
 
     let stdin = std::io::stdin();
     for line in stdin.lock().lines() {
@@ -103,10 +106,13 @@ fn write_error(out: &mut impl Write, id: u64, message: &str) {
 }
 
 impl Worker {
-    fn load(model: &PathBuf, threads: usize) -> Result<Self, String> {
+    fn load(model: &PathBuf, threads: usize, gpu: bool) -> Result<Self, String> {
         let e = |e: ort::Error<ort::session::builder::SessionBuilder>| e.to_string();
-        let session = Session::builder()
-            .map_err(|e| e.to_string())?
+        let mut builder = Session::builder().map_err(|e| e.to_string())?;
+        if gpu {
+            builder = builder.with_execution_providers([gpu_provider()?]).map_err(e)?;
+        }
+        let session = builder
             .with_optimization_level(GraphOptimizationLevel::Level3)
             .map_err(e)?
             .with_intra_threads(threads)
@@ -130,6 +136,7 @@ impl Worker {
         let speed_name = find(&["speed"]).ok_or("model has no speed input")?;
         Ok(Self {
             session,
+            device: if gpu { "GPU" } else { "CPU" },
             ids_name,
             style_name,
             speed_name,
@@ -184,6 +191,20 @@ impl Worker {
         }
         Ok(audio)
     }
+}
+
+/// The GPU execution provider for this platform: WebGPU, which runs on
+/// Metal on macOS. Measured on Apple M4 against CoreML, which was no faster
+/// than the CPU for this model (spec §7.3). Registration errors are reported
+/// instead of silently running on the CPU.
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+fn gpu_provider() -> Result<ort::ep::ExecutionProviderDispatch, String> {
+    Ok(ort::ep::WebGPU::default().build().error_on_failure())
+}
+
+#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+fn gpu_provider() -> Result<ort::ep::ExecutionProviderDispatch, String> {
+    Err("GPU acceleration is not available on this computer".into())
 }
 
 /// Splits token IDs into model-sized chunks, preferring to cut after

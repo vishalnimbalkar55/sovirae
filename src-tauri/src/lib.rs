@@ -177,7 +177,7 @@ pub fn run() {
             let store = Store::new(app.path().app_config_dir()?);
             let settings = store.load();
             let engine = Arc::new(Registry::new(speakit_tts::system_engine()));
-            models::register_installed(&handle, &engine, settings.resource_profile);
+            models::register_installed(&handle, &engine, settings.resource_profile, settings.processor);
             let controller = controller::spawn(
                 engine.clone() as Arc<dyn Engine>,
                 controller::Config {
@@ -252,6 +252,7 @@ pub fn run() {
             commands::preview_voice,
             commands::get_document,
             commands::update_settings,
+            commands::processor_status,
             commands::get_shortcuts,
             commands::set_shortcut,
             commands::suspend_shortcuts,

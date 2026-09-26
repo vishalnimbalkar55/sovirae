@@ -1,7 +1,7 @@
 //! Installs Kokoro through the verified downloader, then measures cold and
 //! warm synthesis on a small English corpus and writes WAVs for listening.
 //!
-//! cargo run --release -p speakit-tts --example kokoro_bench -- <models-dir> <fp32|q8> <out-dir> [threads]
+//! cargo run --release -p speakit-tts --example kokoro_bench -- <models-dir> <fp32|q8> <out-dir> [threads] [cpu|gpu]
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -24,6 +24,7 @@ fn main() {
     let artifact = args.get(2).map(String::as_str).unwrap_or("fp32");
     let out = PathBuf::from(args.get(3).cloned().unwrap_or_else(|| ".".into()));
     let threads: usize = args.get(4).and_then(|t| t.parse().ok()).unwrap_or(4);
+    let gpu = args.get(5).is_some_and(|d| d == "gpu");
     std::fs::create_dir_all(&out).unwrap();
 
     let model = speakit_models::find("kokoro-82m-v1.0").expect("catalog entry");
@@ -54,6 +55,7 @@ fn main() {
         worker_bin,
         voices,
         threads,
+        gpu,
         model_rate: model.sample_rate,
     });
     assert!(engine.has_phonemizer(), "espeak-ng not found");
@@ -66,7 +68,7 @@ fn main() {
             let audio = pcm.samples.len() as f64 / 24_000.0;
             let peak = pcm.samples.iter().fold(0f32, |m, s| m.max(s.abs()));
             println!("{voice} #{i}: {:.2}s audio in {:.2}s  RTF {:.3}  peak {:.2}{}", audio, wall, wall / audio, peak, if i == 0 && voice.ends_with("heart") { "  (includes worker start + model load)" } else { "" });
-            let name = format!("{}-{}-{}.wav", artifact, voice.trim_start_matches("kokoro:"), i);
+            let name = format!("{}-{}-{}-{}.wav", artifact, if gpu { "gpu" } else { "cpu" }, voice.trim_start_matches("kokoro:"), i);
             let mut w = hound::WavWriter::create(out.join(name), hound::WavSpec { channels: 1, sample_rate: 24_000, bits_per_sample: 32, sample_format: hound::SampleFormat::Float }).unwrap();
             for s in &pcm.samples {
                 w.write_sample(*s).unwrap();

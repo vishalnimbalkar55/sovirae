@@ -89,6 +89,16 @@ pub trait Engine: Send + Sync {
     fn unload(&self) {}
     /// Applies an inference thread budget (spec §8.2), where supported.
     fn set_threads(&self, _threads: usize) {}
+    /// Device used for `voice`; engines that own one device ignore it.
+    fn device_for(&self, _voice: &str) -> &'static str {
+        self.device()
+    }
+    /// Requests the GPU for later work, where supported (spec §7.3).
+    fn set_gpu(&self, _gpu: bool) {}
+    /// Why a requested GPU is not in use, if it failed.
+    fn gpu_fallback(&self) -> Option<String> {
+        None
+    }
 }
 
 /// Routes each voice to its engine. Voices of downloaded models are
@@ -181,6 +191,23 @@ impl Engine for Registry {
         for m in self.all_models() {
             m.set_threads(threads);
         }
+    }
+
+    fn device_for(&self, voice: &str) -> &'static str {
+        match self.route(voice) {
+            Some(engine) => engine.device(),
+            None => self.system.device(),
+        }
+    }
+
+    fn set_gpu(&self, gpu: bool) {
+        for m in self.all_models() {
+            m.set_gpu(gpu);
+        }
+    }
+
+    fn gpu_fallback(&self) -> Option<String> {
+        self.all_models().iter().find_map(|m| m.gpu_fallback())
     }
 }
 

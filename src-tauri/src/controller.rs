@@ -936,6 +936,7 @@ impl<H: Host> Worker<H> {
         snap.duration_ms = total * 1000 / sr;
         snap.duration_is_final = known;
         snap.voice = Some(s.voice.name.clone());
+        snap.device = self.engine.device_for(&s.voice.id);
         snap.message = s.message.clone();
         snap
     }
@@ -1113,6 +1114,16 @@ mod tests {
     #[test]
     #[ignore = "needs the installed Kokoro model and plays audio"]
     fn end_to_end_kokoro() {
+        kokoro_reading(false);
+    }
+
+    #[test]
+    #[ignore = "needs the installed Kokoro model, an Apple Silicon GPU, and plays audio"]
+    fn end_to_end_kokoro_gpu() {
+        kokoro_reading(true);
+    }
+
+    fn kokoro_reading(gpu: bool) {
         use speakit_models::Store;
         use speakit_tts::kokoro::{KokoroConfig, KokoroEngine, KokoroVoice};
         let model = speakit_models::find("kokoro-82m-v1.0").unwrap();
@@ -1126,7 +1137,7 @@ mod tests {
         let registry = Arc::new(speakit_tts::Registry::new(speakit_tts::system_engine()));
         registry.set_model(&model.voice_prefix, Some(Arc::new(KokoroEngine::new(KokoroConfig {
             model_id: model.id.clone(), model_name: model.name.clone(), voice_prefix: model.voice_prefix.clone(),
-            model_file: installed.model_file.clone(), worker_bin, voices, threads: 4, model_rate: model.sample_rate,
+            model_file: installed.model_file.clone(), worker_bin, voices, threads: 4, gpu, model_rate: model.sample_rate,
         }))));
         let host = TestHost::default();
         let c = spawn(registry.clone(), Config { match_language: true, rate: 1.0, volume: 0.15, voice: Some("kokoro:af_heart".into()), profile: ResourceProfile::Balanced }, host.clone());
@@ -1135,6 +1146,7 @@ mod tests {
         let first = host.wait_for(Duration::from_secs(15), |s| s.status == PlaybackStatus::Playing).expect("plays");
         println!("Kokoro first audible output (cold worker) after {first:?}");
         assert_eq!(host.last().voice.as_deref(), Some("Heart"));
+        assert_eq!(host.last().device, if gpu { "GPU" } else { "CPU" });
         std::thread::sleep(Duration::from_millis(2500));
         assert!(host.last().position_ms > 1500, "position advances");
         assert!(host.0.lock().unwrap().notices.is_empty(), "no errors");
@@ -1163,7 +1175,7 @@ mod tests {
         let registry = speakit_tts::Registry::new(speakit_tts::system_engine());
         registry.set_model(&model.voice_prefix, Some(Arc::new(KokoroEngine::new(KokoroConfig {
             model_id: model.id.clone(), model_name: model.name.clone(), voice_prefix: model.voice_prefix.clone(),
-            model_file: installed.model_file.clone(), worker_bin: "unused".into(), voices, threads: 1, model_rate: model.sample_rate,
+            model_file: installed.model_file.clone(), worker_bin: "unused".into(), voices, threads: 1, gpu: false, model_rate: model.sample_rate,
         }))));
         let listed: Vec<String> = registry.voices().unwrap().into_iter()
             .filter(|v| v.model == model.id).map(|v| format!("{} ({}, {})", v.name, v.language, v.gender.unwrap_or_default())).collect();

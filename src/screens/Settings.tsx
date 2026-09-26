@@ -1,6 +1,7 @@
-import { useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import type { AppModel } from "../App";
-import type { PlayerLine, ResourceProfile, Settings } from "../lib/types";
+import { api } from "../lib/api";
+import type { PlayerLine, ProcessorStatus, ResourceProfile, Settings } from "../lib/types";
 import { Row, Section, Segmented, Slider, Switch } from "../lib/ui";
 
 const PROFILE_HINT: Record<ResourceProfile, string> = {
@@ -12,6 +13,10 @@ const PROFILE_HINT: Record<ResourceProfile, string> = {
 export default function SettingsScreen({ app }: { app: AppModel }) {
   const s = app.settings!;
   const set = (patch: Partial<Settings>) => app.update(patch);
+  const [processor, setProcessor] = useState<ProcessorStatus | null>(null);
+  useEffect(() => {
+    api.processorStatus().then(setProcessor).catch(() => setProcessor(null));
+  }, [s.processor]);
 
   return (
     <div className="screen" aria-labelledby="settings-title">
@@ -80,8 +85,9 @@ export default function SettingsScreen({ app }: { app: AppModel }) {
               onChange={(resourceProfile) => set({ resourceProfile })}
               options={[["eco", "Eco"], ["balanced", "Balanced"], ["performance", "Performance"]]} />
           </Row>
-          <Row label="Processor" hint="GPU appears here only for voices verified on your hardware">
-            <span className="pill">CPU</span>
+          <Row label="Use GPU" hint={gpuHint(s, processor)} htmlFor="gpu">
+            <Switch id="gpu" checked={s.processor === "gpu"} disabled={!processor?.gpuAvailable}
+              onChange={(on) => set({ processor: on ? "gpu" : "cpu" })} />
           </Row>
         </div>
       </Section>
@@ -120,6 +126,14 @@ export default function SettingsScreen({ app }: { app: AppModel }) {
       </Section>
     </div>
   );
+}
+
+function gpuHint(s: Settings, status: ProcessorStatus | null): string {
+  if (!status?.gpuAvailable) return "Not available on this computer yet. Voices run on the CPU.";
+  if (s.processor === "gpu" && status.fallback) {
+    return `The GPU could not run downloaded voices, so they use the CPU. ${status.fallback}`;
+  }
+  return "Downloaded voices read faster and leave the CPU free. System voices are run by macOS.";
 }
 
 const BARS = [8, 14, 20, 12, 24, 16, 10, 22, 18, 9, 15, 26, 13, 19, 11, 21, 16, 8, 14, 23, 12, 17];

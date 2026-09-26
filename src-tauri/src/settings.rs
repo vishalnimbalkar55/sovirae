@@ -42,6 +42,15 @@ impl ResourceProfile {
     }
 }
 
+/// Where downloaded voices run (spec §7.3). System voices are always run by
+/// the OS.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Processor {
+    Cpu,
+    Gpu,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Shortcuts {
@@ -114,6 +123,7 @@ pub struct Settings {
     pub volume: f32,
     pub voice: Option<String>,
     pub resource_profile: ResourceProfile,
+    pub processor: Processor,
     pub start_at_login: bool,
     pub keep_running: bool,
     pub start_minimized: bool,
@@ -144,6 +154,7 @@ impl Default for Settings {
             volume: 0.8,
             voice: None,
             resource_profile: ResourceProfile::Balanced,
+            processor: Processor::Cpu,
             start_at_login: false,
             keep_running: true,
             start_minimized: false,
@@ -185,6 +196,9 @@ impl Settings {
         }
         if !self.start_at_login {
             self.start_minimized = false;
+        }
+        if !speakit_tts::kokoro::GPU_AVAILABLE {
+            self.processor = Processor::Cpu;
         }
         self.paired_extensions.retain(|id| id.len() == 32 && id.bytes().all(|b| (b'a'..=b'p').contains(&b)));
         self.paired_extensions.dedup();

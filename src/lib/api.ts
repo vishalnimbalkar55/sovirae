@@ -6,6 +6,7 @@ import type {
   InitialState,
   ModelView,
   BridgeStatus,
+  ProcessorStatus,
   Notice,
   Settings,
   ShortcutStatus,
@@ -23,6 +24,7 @@ export const api = {
   previewVoice: (voice: string) => invoke<void>("preview_voice", { voice }),
   getDocument: () => invoke<DocumentView | null>("get_document"),
   updateSettings: (patch: Partial<Settings>) => invoke<Settings>("update_settings", { patch }),
+  processorStatus: () => invoke<ProcessorStatus>("processor_status"),
   getShortcuts: () => invoke<ShortcutStatus[]>("get_shortcuts"),
   setShortcut: (action: string, binding: string | null) =>
     invoke<ShortcutStatus[]>("set_shortcut", { action, binding }),

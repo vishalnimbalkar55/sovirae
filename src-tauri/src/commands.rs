@@ -32,6 +32,23 @@ pub fn get_state(state: State<'_, AppState>) -> InitialState {
     }
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProcessorStatus {
+    /// This build can run downloaded voices on the GPU.
+    gpu_available: bool,
+    /// Why the GPU was requested but the CPU is in use.
+    fallback: Option<String>,
+}
+
+#[tauri::command]
+pub fn processor_status(state: State<'_, AppState>) -> ProcessorStatus {
+    ProcessorStatus {
+        gpu_available: speakit_tts::kokoro::GPU_AVAILABLE,
+        fallback: state.engine.gpu_fallback(),
+    }
+}
+
 #[tauri::command]
 pub fn speak_text(state: State<'_, AppState>, text: String, truncate: Option<bool>) {
     state.controller.send(Command::Speak {
@@ -163,6 +180,9 @@ pub fn update_settings(app: AppHandle, state: State<'_, AppState>, patch: Value)
     if next.resource_profile != before.resource_profile {
         c.send(Command::SetProfile(next.resource_profile));
         state.engine.set_threads(crate::models::threads_for(next.resource_profile));
+    }
+    if next.processor != before.processor {
+        state.engine.set_gpu(next.processor == crate::settings::Processor::Gpu);
     }
     if next.hotkeys_paused != before.hotkeys_paused {
         let a = app.clone();

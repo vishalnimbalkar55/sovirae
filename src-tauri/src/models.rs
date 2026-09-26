@@ -13,7 +13,7 @@ use speakit_tts::kokoro::{KokoroConfig, KokoroEngine, KokoroVoice};
 use speakit_tts::{Engine, Registry};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::settings::ResourceProfile;
+use crate::settings::{Processor, ResourceProfile};
 use crate::AppState;
 
 /// ID of the built-in system voice pseudo-model.
@@ -144,7 +144,7 @@ fn missing(model: &ModelSpec) -> Vec<String> {
 }
 
 /// Builds the engine adapter for an installed model.
-fn engine_for(model: &ModelSpec, installed: &Installed, profile: ResourceProfile) -> Option<Arc<dyn Engine>> {
+fn engine_for(model: &ModelSpec, installed: &Installed, profile: ResourceProfile, processor: Processor) -> Option<Arc<dyn Engine>> {
     match model.family {
         Family::Kokoro => {
             let voices = model
@@ -168,6 +168,7 @@ fn engine_for(model: &ModelSpec, installed: &Installed, profile: ResourceProfile
                 worker_bin: worker_bin()?,
                 voices,
                 threads: threads_for(profile),
+                gpu: processor == Processor::Gpu,
                 model_rate: model.sample_rate,
             })))
         }
@@ -175,11 +176,11 @@ fn engine_for(model: &ModelSpec, installed: &Installed, profile: ResourceProfile
 }
 
 /// Registers every installed model with the engine registry at startup.
-pub fn register_installed(app: &AppHandle, registry: &Registry, profile: ResourceProfile) {
+pub fn register_installed(app: &AppHandle, registry: &Registry, profile: ResourceProfile, processor: Processor) {
     let store = store(app);
     for model in speakit_models::models() {
         if let Some(installed) = store.installed(model) {
-            registry.set_model(&model.voice_prefix, engine_for(model, &installed, profile));
+            registry.set_model(&model.voice_prefix, engine_for(model, &installed, profile, processor));
         }
     }
 }
@@ -322,8 +323,11 @@ pub fn download_model(app: AppHandle, model: String, artifact: String) -> Result
             });
             match result {
                 Ok(installed) => {
-                    let profile = state.settings.lock().unwrap().resource_profile;
-                    state.engine.set_model(&spec.voice_prefix, engine_for(spec, &installed, profile));
+                    let (profile, processor) = {
+                        let s = state.settings.lock().unwrap();
+                        (s.resource_profile, s.processor)
+                    };
+                    state.engine.set_model(&spec.voice_prefix, engine_for(spec, &installed, profile, processor));
                 }
                 Err(ModelError::Cancelled) => {}
                 Err(e) => {
