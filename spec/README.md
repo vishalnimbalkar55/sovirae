@@ -2,6 +2,8 @@
 
 **Planning only. No application implementation has started.**
 
+Read the [Windows prompt feature comparison](Windows-Prompt-Feature-Review.md) for the latest selective review and preferred shortcuts. Cross-platform shell selection remains unresolved; the Windows architecture must not be treated as portable.
+
 Start with the [decisions to confirm](chunks/22-decisions-to-confirm.md), then use the [small implementation steps](steps/README.md). Open only the linked requirements needed for the current step.
 
 The specification is split into **24 topic files** and **14 individual delivery steps**. Every step includes a checklist, dependency, acceptance gate, and related requirements. The original [complete specification](SpeakIt-Product-Spec.md) is retained for copying the whole document.
