@@ -7,7 +7,7 @@
 **Dependency:** Complete Step 11 and its gate first.
 
 - [ ] Run the matrix in [§19](../chunks/19-verification.md).
-- [ ] Verify fresh-user installation and uninstall on Windows.
+- [ ] Verify fresh-user installation and uninstall on each declared Windows, macOS, and Linux package target.
 - [ ] Verify offline operation after model installation.
 - [ ] Review licenses, permissions, logging, and accessibility.
 - [ ] Package private installer and extension instructions.

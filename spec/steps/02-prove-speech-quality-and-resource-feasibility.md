@@ -12,7 +12,7 @@
 - [ ] Compare candidate ONNX artifacts, precision modes, and three voices.
 - [ ] Measure CPU first; validate one GPU path separately.
 - [ ] Evaluate Piper only with its integration/license decision recorded.
-- [ ] Select the recommended artifact from listening and resource results.
+- [ ] Select the recommended quality artifact and an offline starter voice path for every OS; if no usable system voice exists, choose a small verified model to integrate in Step 4.
 
 **Gate:** repeatable report showing actual audio quality, first-audio latency, RTF, RAM, and CPU/GPU behavior. If targets fail, revise model choice before building around it.
 

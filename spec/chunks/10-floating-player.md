@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is a topic-sized extract of the full specification. Original requirement numbering is preserved.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 ### 10.1 Session states
 
@@ -61,8 +61,8 @@ Target approximately 620 × 500 with a resizable reading pane.
 - Unknown audio renders as a dim placeholder; never invent an exact waveform for unsynthesized text.
 - Use up to three subtle layered curves, with the played region clearly distinguishable.
 - Tap output amplitude after time stretching into a preallocated ring buffer.
-- Audio callback must allocate no managed objects, acquire no contended locks, and never touch WPF.
-- UI reads snapshots at most 30 fps; reuse geometry and buffers where useful, but measure actual allocations rather than claiming zero allocations from a specific WPF API.
+- Audio callback must make no heap allocations, acquire no contended locks, and never touch React, WebView, or the Tauri event system.
+- React renders waveform updates at most 30 fps while visible; use Canvas or a bounded SVG path and measure frame time/allocations on each webview. Keep amplitude transfer bounded and off the audio callback.
 - No redraw timer while hidden. Paused view settles to a static state.
 - Expose an accessible seek slider with text time values independent of the visual waveform.
 

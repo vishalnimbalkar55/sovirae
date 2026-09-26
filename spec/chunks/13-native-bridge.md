@@ -2,11 +2,11 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is a topic-sized extract of the full specification. Original requirement numbering is preserved.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 ### 13.1 Transport
 
-Use `chrome.runtime.connectNative("com.speakit.bridge")`. Chrome communicates with the host using length-prefixed UTF-8 JSON; on Windows, the native-order length is little-endian. Chrome's documented limits are 1 MB host-to-browser and 64 MiB browser-to-host, correcting the pasted reversed limit. Content scripts communicate through the extension worker. [Native messaging documentation](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)
+Use `chrome.runtime.connectNative("com.speakit.bridge")`. Chrome communicates with the host using native-endian length-prefixed UTF-8 JSON; Windows/macOS/Linux release architectures here are little-endian. Decode explicitly per target architecture, not by assuming the protocol itself says little-endian. Chrome's documented limits are 1 MB host-to-browser and 64 MiB browser-to-host, correcting the pasted reversed limit. Content scripts communicate through the extension worker. [Native messaging documentation](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)
 
 SpeakIt imposes stricter independent limits: 2 MiB serialized UTF-8 per incoming `speak` message, 64 KiB per outgoing state/control message, and the separate 200,000-code-unit text cap. Check actual encoded JSON size, including escaping and metadata, before allocation and send.
 
@@ -16,7 +16,7 @@ No loopback HTTP/WebSocket server is needed for this release. Native host stdout
 
 - Host manifest contains the expected extension origin allowlist.
 - Validate Chrome-provided caller origin rather than trusting an `extId` supplied in JSON.
-- Desktop pipe is scoped to the current user, with restricted ACLs and a validated installed-host connection handshake.
+- Desktop IPC is scoped to the current user: a restricted named pipe on Windows or a user-owned Unix socket on macOS/Linux. Validate the installed host handshake and peer where the OS supports it.
 - Native messaging and pipe permissions reduce exposure; they do not defend against all malicious software already running as the same user.
 - First use asks the user to allow the extension in a focusable desktop prompt. Do not accept `speak` while approval is pending.
 - Deny and Revoke close authorized connections and reject future requests until explicitly allowed again.

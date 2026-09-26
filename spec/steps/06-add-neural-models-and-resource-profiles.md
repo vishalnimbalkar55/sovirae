@@ -13,7 +13,7 @@
 - [ ] Implement unload, pressure handling, worker recovery, and bounded lookahead.
 - [ ] Add Piper only if its gates pass.
 
-**Gate:** recommended local voice passes quality/performance targets on declared hardware without making foreground work unusable.
+**Gate:** the recommended quality voice passes quality/performance targets on declared hardware without making foreground work unusable; the Step 4 starter voice remains a working fallback.
 
 ## Relevant requirements
 

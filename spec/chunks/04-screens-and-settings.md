@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is a topic-sized extract of the full specification. Original requirement numbering is preserved.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 ### 4.1 Read screen
 
@@ -60,7 +60,7 @@ Sections: Appearance, Playback, Performance, Background behavior, Privacy and st
 | Volume | 80% | Range 0–100%; independent of OS master volume |
 | Execution device | CPU | Auto/GPU available after compatibility checks |
 | Resource profile | Balanced | Eco/Balanced/Performance |
-| Start with Windows | Off | Per-user startup registration |
+| Start at login | Off | Per-user startup mechanism on each supported OS |
 | Keep running when windows close | On | Closing settings leaves tray/player available |
 | Start minimized at login | Off | Enabled only when startup is enabled |
 | Pause global hotkeys | Off | Also available in tray menu |

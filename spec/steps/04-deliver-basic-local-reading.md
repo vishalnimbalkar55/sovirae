@@ -7,12 +7,12 @@
 **Dependency:** Complete Step 3 and its gate first.
 
 - [ ] Implement manual input and clipboard path.
-- [ ] Add a verified installed Windows voice adapter.
+- [ ] Add a verified local voice path on each target OS: tested system voice if accessible, otherwise the Step 2 lightweight model with explicit install/download before offline use.
 - [ ] Add text validation and safe error messages.
 - [ ] Route all entry paths through one session controller.
 - [ ] Add play, pause, stop, and replace-session behavior.
 
-**Gate:** copy a paragraph, press Ctrl+Shift+R, hear it offline, pause/stop reliably, and preserve clipboard content.
+**Gate:** after a usable voice is installed, copy a paragraph, trigger the platform-registered Speak clipboard action, hear it offline, pause/stop reliably, and preserve clipboard content on every declared target.
 
 ## Relevant requirements
 

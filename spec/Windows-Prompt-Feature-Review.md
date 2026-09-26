@@ -124,9 +124,9 @@ Linux offers a GlobalShortcuts portal, but availability depends on the desktop's
 
 Background behavior belongs to the logged-in desktop session; no privileged system daemon is required for reading. Linux autostart and portal-based background permission are separate mechanisms to select according to packaging. [Desktop autostart](https://specifications.freedesktop.org/autostart/latest/), [Background portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.Background.html)
 
-For a later architecture decision, **Avalonia plus a shared C# core and native platform adapters** is a reasonable candidate. It supports Windows, macOS, and Linux, but its documented Linux backends and tray support have qualifications. Merely changing the UI framework does not solve global capture or overlay restrictions. [Supported platforms](https://docs.avaloniaui.net/docs/supported-platforms), [Tray support](https://docs.avaloniaui.net/controls/navigation/trayicon)
+The shared conversation confirms **Tauri 2 + React/TypeScript + Rust** as the intended desktop architecture. Native OS adapters remain necessary for hotkeys, selection capture, background startup, and the floating player. Changing the UI framework alone does not solve Wayland or accessibility restrictions. [Shared conversation](https://chatgpt.com/share/6ab777c9-6118-83e8-8ed4-fe510c699ce2), [Tauri 2](https://v2.tauri.app/start/)
 
-No framework migration is approved or implemented by this review. The Windows-first sections in the existing spec need reconciliation before cross-platform development begins.
+The full specification and its small chunks now use the cross-platform Tauri architecture. No product implementation has begun.
 
 ## 7. Changes made now versus recommendations
 
@@ -134,6 +134,6 @@ No framework migration is approved or implemented by this review. The Windows-fi
 
 **Recommended for a later spec update:** pronunciation dictionary, more explicit reading-rule controls, and platform media-control details.
 
-**Kept unchanged:** resource strategy, text/index architecture, playback design, capability-driven model UI, extension workflow, and the current technology decision pending a separate cross-platform revision.
+**Kept unchanged:** resource strategy, text/index architecture, playback design, capability-driven model UI, and extension workflow. The technology decision was updated to Tauri 2 + React/TypeScript + Rust after the shared conversation was read.
 
-**Not performed:** application coding, scaffolding, installing runtime dependencies, migrating frameworks, or claiming tested cross-platform parity.
+**Not performed:** application coding, scaffolding, installing runtime dependencies, or claiming tested cross-platform parity.

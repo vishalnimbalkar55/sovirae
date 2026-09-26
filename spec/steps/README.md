@@ -2,7 +2,7 @@
 
 [Spec index](../README.md)
 
-**Planning only.** Work through one step at a time after implementation is authorized. Each file contains its checklist, dependency, acceptance gate, and links to relevant requirements. Step 13 is optional future work.
+**Planning only.** Each file includes its checklist, dependency, gate, and relevant requirements. Step 13 is optional future work.
 
 - [ ] [Step 0: Resolve platform and establish evidence](00-resolve-platform-and-establish-evidence.md)
 - [ ] [Step 1: Design the product UI](01-design-the-product-ui.md)

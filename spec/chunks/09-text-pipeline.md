@@ -2,12 +2,12 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is a topic-sized extract of the full specification. Original requirement numbering is preserved.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 ### 9.1 Deterministic processing
 
 1. Accept plain text plus source metadata.
-2. Validate a 200,000 UTF-16-code-unit input limit consistently in JavaScript and C#.
+2. Validate a 200,000 UTF-16-code-unit input limit consistently in extension/React JavaScript and Rust (which must count UTF-16 code units explicitly, not bytes or Unicode scalar values).
 3. If over limit, ask whether to read the first portion; never silently truncate. Cut at a valid Unicode and preferably sentence boundary.
 4. Normalize line endings, control characters, and repeated layout whitespace while retaining paragraph boundaries.
 5. Preserve the original source string and a normalized-to-original span mapping.

@@ -6,13 +6,13 @@
 
 **Dependency:** Complete Step 2 and its gate first.
 
-- [ ] Create project boundaries and dependency checks.
-- [ ] Build MVVM navigation, theme resources, and settings persistence.
-- [ ] Add tray, single-instance behavior, and explicit Exit.
-- [ ] Add compact overlay positioning and focus behavior.
-- [ ] Add hotkey registration and conflict feedback.
+- [ ] Create Tauri 2 + React/TypeScript shell, Rust crate boundaries, command/event schemas, and permission scopes.
+- [ ] Build React navigation, theme resources, and Rust-owned settings persistence.
+- [ ] Add tray/menu bar, single-instance behavior, start-at-login option, and explicit Exit.
+- [ ] Spike compact overlay positioning/focus on Windows, macOS, Linux X11, and a named Wayland session.
+- [ ] Add global shortcut registration, conflict/permission feedback, and fallback actions.
 
-**Gate:** Notepad retains typing focus when the overlay appears; hotkeys remain reliable after 15 minutes idle and sleep/wake.
+**Gate:** the source editor retains typing focus on every supported platform; hotkeys survive 15 minutes idle and sleep/wake where registration is available. Document Wayland limitations.
 
 ## Relevant requirements
 

@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is synchronized with section 11 of the full specification.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 ### 11.1 Preserve the preferred shortcut set
 
@@ -20,7 +20,7 @@ Keep the action layout from the pasted Windows prompt. Most of these bindings we
 | Stop and hide player | `Ctrl+Shift+X` | `Command+Option+X` |
 | Stop and hide while player has focus | `Escape` | `Escape` |
 
-The macOS mappings are proposals, not tested conflict-free bindings; allow the original Control+Shift bindings if the user prefers. Linux shortcuts are suggestions because the desktop/portal may assign or require approval of the final chord. Cross-platform architecture remains a separate decision; this table does not make the current WPF shell portable.
+The macOS mappings are proposals, not tested conflict-free bindings; allow the original Control+Shift bindings if the user prefers. Linux shortcuts are suggestions because the desktop/portal may assign or require approval of the final chord. The cross-platform Tauri shell is specified in [§5](05-architecture.md); every actual chord remains subject to OS registration and conflict testing.
 
 ### 11.2 Exact behavior
 
@@ -37,7 +37,7 @@ The macOS mappings are proposals, not tested conflict-free bindings; allow the o
 
 ### 11.3 Registration, customization, and verification
 
-Use OS-supported registered shortcuts where sufficient. Introduce low-level hooks only for behavior that actually needs them, with fast callbacks and explicit cleanup. Do not inherit the pasted requirement that every shortcut use a Windows keyboard hook.
+Use the Tauri global-shortcut plugin where it satisfies the required chord on the target OS; use a narrow native adapter only for verified gaps. Introduce low-level hooks only for behavior that actually needs them, with fast callbacks and explicit cleanup. Do not inherit the pasted requirement that every shortcut use a Windows keyboard hook. [Tauri Global Shortcut plugin](https://v2.tauri.app/plugin/global-shortcut/)
 
 - Provide a recorder per action, cancel/reset, readable platform key labels, and duplicate-binding checks.
 - Attempt native registration and report actual conflicts or permission denial; do not claim to enumerate every shortcut owned by another app.

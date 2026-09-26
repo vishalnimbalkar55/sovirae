@@ -2,11 +2,9 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is a topic-sized extract of the full specification. Original requirement numbering is preserved.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 Implementation begins only after a separate user instruction. Complete milestones sequentially and retain evidence for each gate.
-
-The delivery plan is split into one small file per step:
 
 - [ ] [Step 0: Resolve platform and establish evidence](../steps/00-resolve-platform-and-establish-evidence.md)
 - [ ] [Step 1: Design the product UI](../steps/01-design-the-product-ui.md)

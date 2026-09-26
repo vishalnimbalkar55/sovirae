@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is a topic-sized extract of the full specification. Original requirement numbering is preserved.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 ### 6.1 Path A: clipboard hotkey — first delivery
 
@@ -13,21 +13,17 @@
 5. Core starts a reading and the player appears without stealing typing focus.
 6. SpeakIt does not modify the clipboard in this path.
 
-The path depends on the source application permitting copy. Do not promise compatibility with protected content or every elevated application.
+The path depends on the source application permitting copy and the desktop allowing clipboard access when the shortcut fires. Offer a focused Paste action or Chrome extension route where background clipboard reads are restricted.
 
 ### 6.2 Path B: selected text without manual copy
 
-1. User selects text and presses `Ctrl+Shift+S`.
-2. Try supported UI Automation selection retrieval first.
-3. If selection retrieval fails, wait for the triggering physical modifier keys to be released, with a short timeout.
-4. Only then attempt a synthetic copy in the foreground application, if clipboard preservation is safe.
-5. Never synthesize copy while Shift/Alt/Windows remain physically held; abort with the clipboard-path hint on timeout.
-6. Observe clipboard sequence changes and restore prior contents only if the clipboard still contains SpeakIt's capture result.
-7. If the user copied something else meanwhile, preserve that new content.
-8. If prior clipboard formats cannot be preserved reliably, skip synthetic capture and ask the user to copy manually.
-9. If nothing is selected, say so. Whole-document reading is an explicit separate action, never a silent fallback.
+1. User selects text and invokes the platform-mapped Read selection shortcut.
+2. The platform adapter tries a supported accessibility selection API: Windows UI Automation, macOS Accessibility with consent, or Linux AT-SPI where exposed.
+3. If the API fails, consider a synthetic Copy only when the OS permits it and all physical trigger modifiers have been released within a short timeout.
+4. Preserve and restore clipboard contents only when the platform can do so safely; never overwrite a newer user copy. If formats or ownership cannot be preserved, skip this fallback.
+5. If capture is unavailable, explain the manual-copy shortcut or Chrome extension route. Whole-document reading is always a separate explicit action.
 
-This replaces the pasted blanket “release and restore all modifiers” recipe, which risks stuck or inconsistent keyboard state. The implementation gate includes ordinary Ctrl/Shift shortcuts immediately after capture and verification that Chrome DevTools never opens.
+Windows must verify that synthetic Copy does not open Chrome DevTools or leave modifiers stuck. macOS must handle Accessibility permission denial. Linux Wayland must not claim arbitrary cross-application selection access. Each result belongs in the compatibility matrix.
 
 ### 6.3 Path C: Chrome selection
 

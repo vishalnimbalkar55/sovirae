@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is a topic-sized extract of the full specification. Original requirement numbering is preserved.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 | Condition | Surface | Required response |
 |---|---|---|
@@ -20,7 +20,7 @@
 | Bridge absent | Extension popup | “Install or repair the SpeakIt desktop connection.” |
 | App cannot launch | Popup/confirmation | “SpeakIt could not be opened. Open it and retry.” |
 | Pairing pending | Popup/confirmation | “Allow this extension in SpeakIt.” |
-| Restricted page | Popup | “This page cannot be picked. Copy text and press Ctrl+Shift+R.” |
+| Restricted page | Popup | “This page cannot be picked. Copy text and use Speak clipboard.” |
 | Over text limit | Confirmation | Offer first 200,000 units with explicit consent or Cancel |
 | Audio device missing | Player | “Audio device disconnected. Choose an output device.” |
 | Source navigated/closed | Source chip | Mark unavailable; continue accepted reading |

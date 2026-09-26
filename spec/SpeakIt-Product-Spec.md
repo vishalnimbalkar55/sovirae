@@ -1,22 +1,22 @@
 # SpeakIt — Detailed Product and Implementation Specification
 
-Version: 3.0 • Prepared: 2026-09-26 • Status: planning only
+Version: 4.0 • Prepared: 2026-09-26 • Status: planning only
 
 **Do not implement this document until the user explicitly asks to start development.**
 
-> **Latest review:** The user wants macOS/Linux compatibility and prefers the pasted Windows shortcut layout. The [selective feature review](Windows-Prompt-Feature-Review.md) records what to reuse and what to leave out. Section 11 now preserves those shortcuts with proposed platform mappings. The existing Windows/WPF architecture below has not been migrated or accepted as a cross-platform solution; resolve that mismatch before implementation.
+> **Architecture decision:** The [shared conversation](https://chatgpt.com/share/6ab777c9-6118-83e8-8ed4-fe510c699ce2) was read. SpeakIt targets Windows, macOS, and Linux with Tauri 2, React/TypeScript, and Rust. Only its TTS path applies; the conversation’s LLM and STT design is outside this release. The [Windows prompt review](Windows-Prompt-Feature-Review.md) supplies selected behavior and preferred shortcuts.
 
 ## 1. Purpose and source of truth
 
 Build a beautiful, local text-to-speech application with a floating player and Chrome extension. It should read selected or copied text in a crisp, pleasant voice while leaving enough CPU, GPU, and memory for the user's other work.
 
-This is a self-contained specification. It replaces references to the unavailable `SpeakIt-ClaudeCode-Prompt.md` in the pasted v2 document. Requirements are defined here rather than inherited from that missing file.
+This is a self-contained specification. It combines the shared Tauri conversation with selected behavior from the pasted Windows v1/v2 documents. Requirements are defined here rather than inherited from those documents.
 
 Inputs reviewed:
 
 - The user's request for attractive UI, efficient local CPU/GPU speech, a Chrome extension, granular steps, and no LLM for now.
 - The complete pasted document, “SpeakIt — Spec v2: Model Config UI, Chrome Extension, Floating Player.”
-- The linked [ChatGPT conversation](https://chatgpt.com/c/6ab76a7f-19f4-83ee-a304-248787073002) could not be fetched. This spec does not claim to include unseen conversation content or the reference screenshot mentioned in the paste.
+- The original private [ChatGPT conversation](https://chatgpt.com/c/6ab76a7f-19f4-83ee-a304-248787073002) could not be fetched, but its [shared copy](https://chatgpt.com/share/6ab777c9-6118-83e8-8ed4-fe510c699ce2) was read. It explicitly proposes Tauri 2 + React/TypeScript + Rust and local native ONNX TTS. No referenced screenshot was available.
 - Primary technical sources listed in §24 were checked while preparing the spec. Proposed budgets and UX decisions are requirements, not measured results.
 
 ### 1.1 Interpretation and assumptions
@@ -24,17 +24,17 @@ Inputs reviewed:
 | Topic | Working decision |
 |---|---|
 | Product name | SpeakIt |
-| Initial desktop platform | Windows 11 x64, following the pasted WPF design |
-| Current development workspace | macOS; this does not imply that WPF runs on macOS |
-| Cross-platform support | Future work; requires a separate UI/platform decision before coding if desired |
+| Desktop platforms | Windows 11 x64, macOS arm64/x64, and named Linux desktop targets; test each release separately |
+| Desktop framework | Tauri 2 + React/TypeScript + Rust, following the shared conversation |
+| Current development workspace | macOS; Windows and Linux require separate native test environments |
 | “No LLM” | No chat model, summarization, rewriting, translation, agent, or cloud language-model dependency; dedicated local neural TTS remains in scope |
 | “Long press control” | Support long-press Ctrl explicitly; also allow Alt and shortcut-only activation |
 | Initial language validation | English US/UK; other catalog languages only marked supported after testing |
 | Default hardware policy | Balanced CPU; optional verified GPU acceleration |
 | New read during playback | Replace current reading; no queue in this release |
-| Distribution | Private Windows installer plus unpacked extension first; public distribution later |
+| Distribution | Private native packages for validated target OSes plus unpacked extension first; public distribution later |
 
-The platform and target hardware are assumptions to revisit before implementation, not approvals inferred from silence.
+Platform intent and the Tauri stack come from the user and shared conversation. Exact OS versions, architectures, hardware targets, and packaging remain to be verified before implementation.
 
 ### 1.2 Priority definitions
 
@@ -68,7 +68,7 @@ The platform and target hardware are assumptions to revisit before implementatio
 - Voice cloning, training, celebrity voice imitation, and microphone input.
 - OCR, image reading, scanned PDF recognition, and DRM bypass.
 - A second audio engine or player inside the extension.
-- Mobile clients, macOS/Linux desktop clients, and multi-device synchronization.
+- Mobile clients and multi-device synchronization. Windows, macOS, and Linux desktop are in scope, with platform-specific capability gates.
 - Playback queues, batch audiobook production, and audio-file export in the first release.
 - A website or marketing landing page; the UI design skill is used for product design guidance.
 
@@ -78,7 +78,7 @@ The platform and target hardware are assumptions to revisit before implementatio
 
 The `frontend-design` skill from [Anthropic's skills repository](https://github.com/anthropics/skills/tree/main/skills/frontend-design) was installed and read for this specification. Local installation: `/Users/zee/.codex/skills/frontend-design/SKILL.md`.
 
-It is a suitable design-direction skill, not a claim that one objectively “best” UI skill exists. Its principles are adapted to a native desktop product: intentional typography, meaningful visual hierarchy, restrained animation, realistic content, and one memorable visual element. No UI code or prototype has been implemented.
+It is a suitable design-direction skill, not a claim that one objectively “best” UI skill exists. Its principles are adapted to a Tauri desktop product: intentional typography, meaningful visual hierarchy, restrained animation, realistic content, and one memorable visual element. No UI code or prototype has been implemented.
 
 ### 3.2 Concept: a quiet reading desk
 
@@ -204,7 +204,7 @@ Sections: Appearance, Playback, Performance, Background behavior, Privacy and st
 | Volume | 80% | Range 0–100%; independent of OS master volume |
 | Execution device | CPU | Auto/GPU available after compatibility checks |
 | Resource profile | Balanced | Eco/Balanced/Performance |
-| Start with Windows | Off | Per-user startup registration |
+| Start at login | Off | Per-user startup mechanism on each supported OS |
 | Keep running when windows close | On | Closing settings leaves tray/player available |
 | Start minimized at login | Off | Enabled only when startup is enabled |
 | Pause global hotkeys | Off | Also available in tray menu |
@@ -216,61 +216,72 @@ Explicit Exit always stops playback and terminates all owned workers. Closing th
 
 ## 5. Architecture and platform boundaries
 
-### 5.1 Proposed technology choices
+### 5.1 Chosen stack and boundaries
 
-- Desktop: WPF, MVVM, a supported .NET LTS, dependency injection, structured local logging.
-- Baseline recommendation: .NET 10, replacing the pasted .NET 8 baseline. Microsoft's published support dates place .NET 8 near end of support in November 2026; .NET 10 has a longer runway. Recheck supported SDK/package combinations when implementation begins. [Source](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core)
-- Core: headless C# library, with no WPF or `System.Windows` reference.
-- Local neural inference: ONNX Runtime adapters where the exact exported model is compatible.
-- Audio: WASAPI output, a tested SoundTouch binding or equivalent pitch-preserving time stretcher, and bounded PCM buffers.
-- Windows built-in TTS: select one concrete Windows API adapter and enumerate its compatible voices; do not mix WinRT and `System.Speech` voice APIs accidentally.
-- Extension: Manifest V3, JavaScript modules, HTML/CSS in shadow UI, no required bundler for the first version.
-- Bridge: Chrome Native Messaging to a small host, then a per-user named pipe to the desktop process.
-- Inference isolation: a worker process owned by the desktop app, so a failed native inference call can be terminated without killing the UI.
+- **Desktop shell:** Tauri 2 with a Rust backend and React + TypeScript UI. Use Vite for the frontend build, Tauri commands/events for narrow UI ↔ Rust messages, and explicit capability permissions. Tauri uses the platform webview; verify rendering on WebView2, WKWebView, and WebKitGTK. [Tauri architecture](https://v2.tauri.app/start/)
+- **Product core:** Rust crates for `SpeechDocument`, deterministic text rules, playback state, synthesis scheduling, model/catalog management, resource policies, and settings. The UI never owns playback state or runs inference in JavaScript.
+- **TTS runtime:** a packaged Rust/native worker process, with ONNX Runtime for the verified Kokoro artifact. Piper is conditional on integration and licensing checks. No production Python, PyTorch, `llama.cpp`, GGUF, LLM, STT, microphone, or local LLM HTTP server.
+- **Audio:** use `cpal` as the initial Rust output library on Windows, macOS, and Linux, with a bounded native PCM ring. Verify its default-device changes, clocks, Linux backend dependencies, and package behavior in a spike. Choose a pitch-preserving time-stretch library/binding only after a quality, portability, and license test; NAudio/WASAPI cannot be the shared implementation. [CPAL platform support](https://github.com/RustAudio/cpal)
+- **OS services:** a small Rust adapter layer for global shortcuts, foreground selection capture, clipboard, tray/menu, startup, focus-safe floating window, output-device changes, and media controls. Each adapter reports capabilities instead of promising unsupported OS behavior.
+- **Chrome:** MV3 extension → Chrome Native Messaging host → authenticated local IPC → the running Tauri desktop process. The host is a small native Rust executable with shared protocol definitions. Use a per-user named pipe on Windows and a user-owned Unix-domain socket on macOS/Linux, not an open localhost server.
+- **Worker packaging:** package per-target worker binaries as Tauri sidecars; scope launch permissions to exact executables and fixed arguments. [Tauri sidecars](https://v2.tauri.app/develop/sidecar/)
+- **Process ownership:** Tauri is the single session owner. It supervises inference and bridge workers, owns cancellation/session IDs, and shuts them down on Exit. A model worker can crash or be restarted without losing the UI.
 
-These are specification choices; no dependencies are installed by this document.
+The original conversation discussed both LLM and TTS. Only the TTS runtime and hardware-selection ideas are adopted. Its example Python/FastAPI service, `llama-server`, SSE token stream, and generic GPU mapping are not dependencies of SpeakIt.
 
 ### 5.2 Proposed repository structure
 
 ```text
-spec/SpeakIt-Product-Spec.md
-src/SpeakIt.App/              WPF views, view models, tray, composition
-src/SpeakIt.Core/             Text, sessions, scheduling, contracts
-src/SpeakIt.Audio/            Playback, time stretching, device recovery
-src/SpeakIt.Models/           Catalog, download verification, engine adapters
-src/SpeakIt.InferenceHost/    Isolated model execution and PCM streaming
-src/SpeakIt.Interop/          Windows-specific native interop
-src/SpeakIt.NativeHost/       Chrome framing and desktop bridge
-ext/                         Manifest, worker, popup, options, picker
-tests/                       Core, bridge, integration, extension fixtures
-benchmarks/                  Corpus, runner, machine metadata, reports
-installer/                   Per-user installer and bridge registration
+spec/                              Requirements and step files
+src/                               React + TypeScript UI and player
+src-tauri/src/                     Tauri startup, commands, events, tray
+crates/speakit-core/               SpeechDocument, text rules, session state
+crates/speakit-models/             Catalog, download, capability checks
+crates/speakit-audio/              CPAL output, native PCM ring, tested time stretcher
+crates/speakit-platform/           Windows/macOS/Linux service adapters
+crates/speakit-protocol/           Versioned IPC and native message schemas
+workers/speakit-tts/               ONNX inference worker executable
+workers/speakit-native-host/       Chrome stdio ↔ local IPC executable
+ext/                               MV3 worker, popup, options, picker
+benchmarks/                        Listening corpus and resource reports
+packaging/                         Per-platform app and host registration
 ```
 
-Only `spec/` is created during this planning task. The other paths describe future work.
+These are future paths. Only `spec/` exists during this planning task. Package each worker binary for the target OS/architecture; model weights are separately downloaded and hash verified. A worker may use a shared Rust crate, but it has its own lifecycle and message boundary.
 
-### 5.3 Responsibilities
+### 5.3 Data flow and responsibilities
 
 ```text
-Manual input ───┐
-Clipboard ──────┼──> PlaybackSession ──> SpeechDocument ──> Scheduler
-Auto-capture ───┤                                           │
-Chrome bridge ──┘                                           ▼
-                  Native player <── State       Local inference worker
-                         ▲                                 │
-                         └── Audio clock <── WASAPI <── PCM cache
-
-Chrome picker -> Extension worker -> Native host -> Desktop named pipe
+Manual text / clipboard ──┐
+OS selection capture ──────┼──> Tauri Rust commands ──> one PlaybackSession
+Chrome extension ── host ──┘                │                   │
+                                 SpeechDocument + text rules  │
+                                            │                   ▼
+                                    bounded scheduler ──> TTS worker
+                                                             │ PCM
+React settings/player <── state events <── native audio <── cache
 ```
 
-- Adapters collect text and source metadata; they do not create playback engines.
-- Core validates and normalizes all text from all sources.
-- One session owns playback, cancellation, segment ordering, and session identity.
-- Audio consumes prepared PCM; it never performs synthesis or disk/network I/O on its callback.
-- Model code exposes capabilities and synthesized audio, not UI controls.
-- Interop calls live in the Windows-specific project.
-- UI observes immutable snapshots or dispatcher-safe events.
+- The extension and OS adapters submit plain text plus bounded source metadata. No adapter has an audio player.
+- `SpeechDocument` keeps source mapping and sentence state. The scheduler requests one segment at a time up to a bounded lookahead; the worker returns PCM and measured duration.
+- Rust owns the audio clock, output device, session state, cache, and cancellation. React renders snapshots and sends explicit commands.
+- Do not stream bulk PCM as high-frequency Tauri events to React. The UI receives low-rate status only; native audio consumes native buffers.
+- TypeScript, Rust, native host, and extension share a versioned protocol contract and validation fixtures.
+- A Tauri plugin is a candidate implementation, not an automatic solution. Validate shortcuts, autostart, tray, positioning, and capabilities on each platform. [Tauri plugins](https://v2.tauri.app/start/)
 - No LLM dependency or content-processing service belongs in this architecture.
+
+### 5.4 Native capability gates
+
+| Capability | Windows | macOS | Linux |
+|---|---|---|---|
+| Global shortcuts | Registered chords, with narrow native fallback only if required | Registered chords; permissions depend on chosen method | X11 or GlobalShortcuts portal where available; desktop may assign final chord |
+| Foreground selection | UI Automation with safe copy fallback | Accessibility selected-text APIs with consent, then safe fallback | AT-SPI where exposed; Wayland often needs explicit copy/extension |
+| Background/tray | User-session process and tray | Menu bar user-session process | StatusNotifier/AppIndicator where supported; retain a launcher route where absent |
+| Floating player | Native no-activate window behavior | Non-activating panel/window behavior | X11 window-manager behavior; Wayland compositor decides placement and focus limits |
+| Audio | Native backend selected by tested Rust adapter | Native backend selected by tested Rust adapter | PulseAudio/PipeWire/ALSA path selected by tested adapter |
+| Browser IPC | Per-user pipe | User-owned Unix socket | User-owned Unix socket |
+
+**Release gate:** test the requested hotkey, background, overlay, capture, and audio flows on each declared OS/session type. If a Wayland compositor prevents global shortcut registration or arbitrary window placement, report that limitation and provide extension/focused Paste controls. Do not claim pixel-identical or always-on-top parity where the compositor does not permit it. [Global Shortcuts portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.GlobalShortcuts.html), [Tauri Global Shortcut plugin](https://v2.tauri.app/plugin/global-shortcut/)
 
 ## 6. Entry paths and exact user journeys
 
@@ -283,21 +294,17 @@ Chrome picker -> Extension worker -> Native host -> Desktop named pipe
 5. Core starts a reading and the player appears without stealing typing focus.
 6. SpeakIt does not modify the clipboard in this path.
 
-The path depends on the source application permitting copy. Do not promise compatibility with protected content or every elevated application.
+The path depends on the source application permitting copy and the desktop allowing clipboard access when the shortcut fires. Offer a focused Paste action or Chrome extension route where background clipboard reads are restricted.
 
 ### 6.2 Path B: selected text without manual copy
 
-1. User selects text and presses `Ctrl+Shift+S`.
-2. Try supported UI Automation selection retrieval first.
-3. If selection retrieval fails, wait for the triggering physical modifier keys to be released, with a short timeout.
-4. Only then attempt a synthetic copy in the foreground application, if clipboard preservation is safe.
-5. Never synthesize copy while Shift/Alt/Windows remain physically held; abort with the clipboard-path hint on timeout.
-6. Observe clipboard sequence changes and restore prior contents only if the clipboard still contains SpeakIt's capture result.
-7. If the user copied something else meanwhile, preserve that new content.
-8. If prior clipboard formats cannot be preserved reliably, skip synthetic capture and ask the user to copy manually.
-9. If nothing is selected, say so. Whole-document reading is an explicit separate action, never a silent fallback.
+1. User selects text and invokes the platform-mapped Read selection shortcut.
+2. The platform adapter tries a supported accessibility selection API: Windows UI Automation, macOS Accessibility with consent, or Linux AT-SPI where exposed.
+3. If the API fails, consider a synthetic Copy only when the OS permits it and all physical trigger modifiers have been released within a short timeout.
+4. Preserve and restore clipboard contents only when the platform can do so safely; never overwrite a newer user copy. If formats or ownership cannot be preserved, skip this fallback.
+5. If capture is unavailable, explain the manual-copy shortcut or Chrome extension route. Whole-document reading is always a separate explicit action.
 
-This replaces the pasted blanket “release and restore all modifiers” recipe, which risks stuck or inconsistent keyboard state. The implementation gate includes ordinary Ctrl/Shift shortcuts immediately after capture and verification that Chrome DevTools never opens.
+Windows must verify that synthetic Copy does not open Chrome DevTools or leave modifiers stuck. macOS must handle Accessibility permission denial. Linux Wayland must not claim arbitrary cross-application selection access. Each result belongs in the compatibility matrix.
 
 ### 6.3 Path C: Chrome selection
 
@@ -329,7 +336,7 @@ Latching resolves the ambiguity in the pasted flow: a user must be able to relea
 |---|---|---|---|
 | Kokoro-82M | Primary quality candidate | CPU baseline; GPU only for tested export/provider combinations | Pass pronunciation, startup, resource, and listening gates |
 | Piper | Lightweight alternative | CPU first | Pass quality checks and engine/voice distribution-license review |
-| Installed Windows voice | Immediate fallback | OS-managed local speech | Verify offline behavior and compatible audio capture |
+| Platform system voice, where available | Optional zero-download fallback | OS-managed local speech | Test whether each OS exposes offline voices and controllable PCM; do not promise on Linux |
 
 Kokoro has 82 million parameters and Apache-2.0 model weights. That makes it a reasonable compact quality candidate, not proof of performance on the user's hardware. Its official example emits 24 kHz audio; use each artifact's actual declared format. [Model card](https://huggingface.co/hexgrad/Kokoro-82M)
 
@@ -345,7 +352,7 @@ Prepare a fixed 30-passage corpus covering:
 - Long words, emojis, punctuation-only input, and mixed-script text.
 - English accents separately; Hindi and other languages only if explicitly included in the supported catalog.
 
-Compare at least three available Kokoro voices, one suitable Piper voice if included, and the built-in fallback. Review naturalness, crisp consonants, intelligibility, pronunciation, pauses, missing/repeated words, clipping, and fatigue over 15 minutes.
+Compare at least three available Kokoro voices, one suitable Piper voice if included, and any verified OS built-in fallback. Review naturalness, crisp consonants, intelligibility, pronunciation, pauses, missing/repeated words, clipping, and fatigue over 15 minutes.
 
 Proposed acceptance: average at least 4/5 for clarity and listening comfort from three listeners on the agreed corpus; no systematic omitted/repeated words or audible clipping. Record listeners, equipment, text, model hash, and settings. If only the owner evaluates a private build, label that limitation rather than calling it a broader study.
 
@@ -357,7 +364,7 @@ Quantized and full-precision artifacts must be compared directly. An int8 file m
 - GPU selection is explicit and reversible; CPU remains available.
 - Auto mode benchmarks a small local sample with consent before selecting a device.
 - Record model export, runtime version, execution provider, device, and any CPU fallback nodes.
-- Candidate GPU providers include CUDA for compatible NVIDIA hardware and DirectML for compatible Windows GPUs. Provider availability is not model compatibility; validate actual execution. [Provider documentation](https://onnxruntime.ai/docs/execution-providers/)
+- Candidate GPU providers include CUDA for compatible NVIDIA hardware, DirectML for compatible Windows GPUs, CoreML on eligible Macs, and OpenVINO where the exact Intel/export/OS combination is tested. Provider availability is not model compatibility; validate actual execution and CPU fallback nodes. Do not import the shared conversation’s `llama.cpp` GPU mapping into ONNX TTS. [Provider documentation](https://onnxruntime.ai/docs/execution-providers/)
 - Never label a session “GPU” merely because the machine has a GPU.
 - If GPU loading fails, offer CPU fallback and show the reason. Do not silently download large runtimes.
 - On battery, Auto prefers Eco CPU unless the measured GPU path is more efficient.
@@ -407,7 +414,7 @@ All numbers below are proposed engineering targets. No benchmark has been run fo
 | Modest laptop | Four physical CPU cores, 8 GB RAM, SSD, no discrete GPU | Eco and Balanced CPU |
 | Typical desktop | Six or more CPU cores, 16 GB RAM | Balanced CPU |
 | GPU desktop | Compatible NVIDIA GPU with at least 4 GB VRAM, 16 GB RAM | Explicit supported GPU path |
-| Integrated GPU | Supported Intel/AMD Windows GPU | Optional provider validation |
+| Integrated GPU | Supported Intel/AMD Windows or Linux GPU, or Apple Silicon | Optional provider validation by exact model/export |
 
 Record exact CPU/GPU model, OS build, driver, power mode, RAM, runtime, and model hash. Do not claim universal support from these broad classes alone.
 
@@ -464,7 +471,7 @@ Real-time factor = synthesis wall time / produced audio duration. At playback sp
 ### 9.1 Deterministic processing
 
 1. Accept plain text plus source metadata.
-2. Validate a 200,000 UTF-16-code-unit input limit consistently in JavaScript and C#.
+2. Validate a 200,000 UTF-16-code-unit input limit consistently in extension/React JavaScript and Rust (which must count UTF-16 code units explicitly, not bytes or Unicode scalar values).
 3. If over limit, ask whether to read the first portion; never silently truncate. Cut at a valid Unicode and preferably sentence boundary.
 4. Normalize line endings, control characters, and repeated layout whitespace while retaining paragraph boundaries.
 5. Preserve the original source string and a normalized-to-original span mapping.
@@ -559,8 +566,8 @@ Target approximately 620 × 500 with a resizable reading pane.
 - Unknown audio renders as a dim placeholder; never invent an exact waveform for unsynthesized text.
 - Use up to three subtle layered curves, with the played region clearly distinguishable.
 - Tap output amplitude after time stretching into a preallocated ring buffer.
-- Audio callback must allocate no managed objects, acquire no contended locks, and never touch WPF.
-- UI reads snapshots at most 30 fps; reuse geometry and buffers where useful, but measure actual allocations rather than claiming zero allocations from a specific WPF API.
+- Audio callback must make no heap allocations, acquire no contended locks, and never touch React, WebView, or the Tauri event system.
+- React renders waveform updates at most 30 fps while visible; use Canvas or a bounded SVG path and measure frame time/allocations on each webview. Keep amplitude transfer bounded and off the audio callback.
 - No redraw timer while hidden. Paused view settles to a static state.
 - Expose an accessible seek slider with text time values independent of the visual waveform.
 
@@ -586,7 +593,7 @@ Keep the action layout from the pasted Windows prompt. Most of these bindings we
 | Stop and hide player | `Ctrl+Shift+X` | `Command+Option+X` |
 | Stop and hide while player has focus | `Escape` | `Escape` |
 
-The macOS mappings are proposals, not tested conflict-free bindings; allow the original Control+Shift bindings if the user prefers. Linux shortcuts are suggestions because the desktop/portal may assign or require approval of the final chord. Cross-platform architecture remains a separate decision; this table does not make the current WPF shell portable.
+The macOS mappings are proposals, not tested conflict-free bindings; allow the original Control+Shift bindings if the user prefers. Linux shortcuts are suggestions because the desktop/portal may assign or require approval of the final chord. The cross-platform Tauri shell is specified in §5; every actual chord remains subject to OS registration and conflict testing.
 
 ### 11.2 Exact behavior
 
@@ -603,7 +610,7 @@ The macOS mappings are proposals, not tested conflict-free bindings; allow the o
 
 ### 11.3 Registration, customization, and verification
 
-Use OS-supported registered shortcuts where sufficient. Introduce low-level hooks only for behavior that actually needs them, with fast callbacks and explicit cleanup. Do not inherit the pasted requirement that every shortcut use a Windows keyboard hook.
+Use the Tauri global-shortcut plugin where it satisfies the required chord on the target OS; use a narrow native adapter only for verified gaps. Introduce low-level hooks only for behavior that actually needs them, with fast callbacks and explicit cleanup. Do not inherit the pasted requirement that every shortcut use a Windows keyboard hook. [Tauri Global Shortcut plugin](https://v2.tauri.app/plugin/global-shortcut/)
 
 - Provide a recorder per action, cancel/reset, readable platform key labels, and duplicate-binding checks.
 - Attempt native registration and report actual conflicts or permission denial; do not claim to enumerate every shortcut owned by another app.
@@ -721,7 +728,7 @@ Chrome documents isolated content-script execution and frame injection behavior;
 
 ### 13.1 Transport
 
-Use `chrome.runtime.connectNative("com.speakit.bridge")`. Chrome communicates with the host using length-prefixed UTF-8 JSON; on Windows, the native-order length is little-endian. Chrome's documented limits are 1 MB host-to-browser and 64 MiB browser-to-host, correcting the pasted reversed limit. Content scripts communicate through the extension worker. [Native messaging documentation](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)
+Use `chrome.runtime.connectNative("com.speakit.bridge")`. Chrome communicates with the host using native-endian length-prefixed UTF-8 JSON; Windows/macOS/Linux release architectures here are little-endian. Decode explicitly per target architecture, not by assuming the protocol itself says little-endian. Chrome's documented limits are 1 MB host-to-browser and 64 MiB browser-to-host, correcting the pasted reversed limit. Content scripts communicate through the extension worker. [Native messaging documentation](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)
 
 SpeakIt imposes stricter independent limits: 2 MiB serialized UTF-8 per incoming `speak` message, 64 KiB per outgoing state/control message, and the separate 200,000-code-unit text cap. Check actual encoded JSON size, including escaping and metadata, before allocation and send.
 
@@ -731,7 +738,7 @@ No loopback HTTP/WebSocket server is needed for this release. Native host stdout
 
 - Host manifest contains the expected extension origin allowlist.
 - Validate Chrome-provided caller origin rather than trusting an `extId` supplied in JSON.
-- Desktop pipe is scoped to the current user, with restricted ACLs and a validated installed-host connection handshake.
+- Desktop IPC is scoped to the current user: a restricted named pipe on Windows or a user-owned Unix socket on macOS/Linux. Validate the installed host handshake and peer where the OS supports it.
 - Native messaging and pipe permissions reduce exposure; they do not defend against all malicious software already running as the same user.
 - First use asks the user to allow the extension in a focusable desktop prompt. Do not accept `speak` while approval is pending.
 - Deny and Revoke close authorized connections and reject future requests until explicitly allowed again.
@@ -801,7 +808,7 @@ Error codes include `NOT_AUTHORIZED`, `NO_TEXT`, `TEXT_TOO_LONG`, `PAYLOAD_TOO_L
 - Retain origin rather than full URL by default; full URLs can contain private tokens.
 - Logs contain event IDs, timings, model IDs, resource readings, and sanitized error codes, not reading content.
 - Rotate logs with a proposed total quota of 20 MiB.
-- Persistent content/cache files, if enabled, are user-private and protected at rest using an appropriate Windows mechanism; make clear this is not protection from other processes running as that user.
+- Persistent content/cache files, if enabled, are user-private under the OS application-data directory. Evaluate per-platform at-rest protection before claiming encryption; ordinary file permissions do not protect against other processes running as that user.
 - Clear cache preserves installed models unless the user explicitly selects model deletion.
 - Diagnostic export previews the included metadata and excludes reading text by default.
 - Extension settings stay local. No browsing-history collection or passive page-text harvesting.
@@ -824,7 +831,7 @@ Error codes include `NOT_AUTHORIZED`, `NO_TEXT`, `TEXT_TOO_LONG`, `PAYLOAD_TOO_L
 | Bridge absent | Extension popup | “Install or repair the SpeakIt desktop connection.” |
 | App cannot launch | Popup/confirmation | “SpeakIt could not be opened. Open it and retry.” |
 | Pairing pending | Popup/confirmation | “Allow this extension in SpeakIt.” |
-| Restricted page | Popup | “This page cannot be picked. Copy text and press Ctrl+Shift+R.” |
+| Restricted page | Popup | “This page cannot be picked. Copy text and use Speak clipboard.” |
 | Over text limit | Confirmation | Offer first 200,000 units with explicit consent or Cancel |
 | Audio device missing | Player | “Audio device disconnected. Choose an output device.” |
 | Source navigated/closed | Source chip | Mark unavailable; continue accepted reading |
@@ -846,16 +853,16 @@ Errors must remain long enough to act on and be announced accessibly. Do not mak
 
 ## 17. Packaging and installation
 
-1. Produce a per-user installer using a consistent writable install path under local app data; do not mix a no-admin claim with a required Program Files write.
-2. Include app, inference host, native host, required runtime components, and license notices.
-3. Write the native-host manifest and per-user Chrome registration with exact executable paths.
-4. Keep the extension identity stable across the chosen development/distribution workflow. Do not claim it changes on every ordinary reload; pin the development key/identity where needed.
-5. Offer unpacked-extension instructions for private use; do not silently enable an extension in the user's browser.
-6. Treat Edge support as a separately verified P2 target, including its registration and store identity.
-7. Uninstall removes owned registration and executables; ask whether to retain downloaded models/settings.
-8. Update atomically, stop owned workers cleanly, and preserve user configuration.
-9. Before public release, complete installer signing, extension review requirements, and license obligations for the actual distributed artifacts.
-10. Revalidate current store/distribution policies when publishing; this spec does not authorize publishing.
+1. Produce native packages for every validated OS/architecture: Windows installer, signed/notarized macOS app where distributed, and a chosen Linux package format. Test installation on clean machines.
+2. Bundle the Tauri shell, Rust/native TTS worker, native messaging host, required ONNX/audio libraries, and notices. Do not bundle Python, Torch, Node.js as a runtime, an LLM, or unverified GPU libraries.
+3. Download model files separately after explicit user action unless a small voice is legally and technically verified for bundling. Do not promise first-run audio before a usable engine/voice is present.
+4. Install the Chrome native-host manifest and origin allowlist in each OS-specific per-user registration location; use exact installed paths and extension ID. On Windows use the documented registry key; on macOS/Linux use Chrome's documented host directory.
+5. Keep the extension identity stable across the chosen development/distribution workflow. Do not silently enable it in the user's browser.
+6. Start-at-login is a user choice implemented by a tested Tauri/native mechanism on each OS. Background operation stays in the signed-in desktop session, never as a privileged system service.
+7. Store settings, models, cache, and logs in OS user-data directories, respecting Linux XDG paths. The app's code-signing, executable permissions, shared-library loader paths, and worker supervision must be tested per package.
+8. Uninstall removes owned registration and executables; ask whether to retain downloaded models/settings. An update must preserve config and not silently replace an in-use voice.
+9. Before public release, complete signatures/notarization where applicable, extension review, model/runtime license review, and a compatibility matrix for Windows, macOS, Linux X11, and named Wayland environments.
+10. Revalidate store/distribution policies when publishing; this spec does not authorize publishing. [Tauri distribution](https://v2.tauri.app/start/), [Chrome Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)
 
 ## 18. Step-by-step delivery plan
 
@@ -863,7 +870,7 @@ Implementation begins only after a separate user instruction. Complete milestone
 
 ### Step 0 — Resolve platform and establish evidence
 
-- [ ] Confirm Windows-first target and actual CPU/GPU hardware.
+- [ ] Confirm exact Windows, macOS, and Linux release versions/architectures and representative CPU/GPU hardware.
 - [ ] Confirm English-first scope and any required Hindi/other voices.
 - [ ] Record private versus public distribution intent.
 - [ ] Pin SDK/runtime candidates and catalog schema.
@@ -892,29 +899,29 @@ Implementation begins only after a separate user instruction. Complete milestone
 - [ ] Compare candidate ONNX artifacts, precision modes, and three voices.
 - [ ] Measure CPU first; validate one GPU path separately.
 - [ ] Evaluate Piper only with its integration/license decision recorded.
-- [ ] Select the recommended artifact from listening and resource results.
+- [ ] Select the recommended quality artifact and an offline starter voice path for every OS; if no usable system voice exists, choose a small verified model to integrate in Step 4.
 
 **Gate:** repeatable report showing actual audio quality, first-audio latency, RTF, RAM, and CPU/GPU behavior. If targets fail, revise model choice before building around it.
 
 ### Step 3 — Create desktop shell
 
-- [ ] Create project boundaries and dependency checks.
-- [ ] Build MVVM navigation, theme resources, and settings persistence.
-- [ ] Add tray, single-instance behavior, and explicit Exit.
-- [ ] Add compact overlay positioning and focus behavior.
-- [ ] Add hotkey registration and conflict feedback.
+- [ ] Create Tauri 2 + React/TypeScript shell, Rust crate boundaries, command/event schemas, and permission scopes.
+- [ ] Build React navigation, theme resources, and Rust-owned settings persistence.
+- [ ] Add tray/menu bar, single-instance behavior, start-at-login option, and explicit Exit.
+- [ ] Spike compact overlay positioning/focus on Windows, macOS, Linux X11, and a named Wayland session.
+- [ ] Add global shortcut registration, conflict/permission feedback, and fallback actions.
 
-**Gate:** Notepad retains typing focus when the overlay appears; hotkeys remain reliable after 15 minutes idle and sleep/wake.
+**Gate:** the source editor retains typing focus on every supported platform; hotkeys survive 15 minutes idle and sleep/wake where registration is available. Document Wayland limitations.
 
 ### Step 4 — Deliver basic local reading
 
 - [ ] Implement manual input and clipboard path.
-- [ ] Add a verified installed Windows voice adapter.
+- [ ] Add a verified local voice path on each target OS: tested system voice if accessible, otherwise the Step 2 lightweight model with explicit install/download before offline use.
 - [ ] Add text validation and safe error messages.
 - [ ] Route all entry paths through one session controller.
 - [ ] Add play, pause, stop, and replace-session behavior.
 
-**Gate:** copy a paragraph, press Ctrl+Shift+R, hear it offline, pause/stop reliably, and preserve clipboard content.
+**Gate:** after a usable voice is installed, copy a paragraph, trigger the platform-registered Speak clipboard action, hear it offline, pause/stop reliably, and preserve clipboard content on every declared target.
 
 ### Step 5 — Build document index and audio scheduling
 
@@ -936,7 +943,7 @@ Implementation begins only after a separate user instruction. Complete milestone
 - [ ] Implement unload, pressure handling, worker recovery, and bounded lookahead.
 - [ ] Add Piper only if its gates pass.
 
-**Gate:** recommended local voice passes quality/performance targets on declared hardware without making foreground work unusable.
+**Gate:** the recommended quality voice passes quality/performance targets on declared hardware without making foreground work unusable; the Step 4 starter voice remains a working fallback.
 
 ### Step 7 — Polish the player
 
@@ -950,10 +957,10 @@ Implementation begins only after a separate user instruction. Complete milestone
 
 ### Step 8 — Add best-effort desktop capture
 
-- [ ] Implement UI Automation capture.
+- [ ] Implement platform selection adapters: Windows UI Automation, macOS Accessibility where permitted, and Linux AT-SPI where available.
 - [ ] Add modifier-release waiting and bounded synthetic-copy fallback.
 - [ ] Handle clipboard format limitations and concurrent user copies.
-- [ ] Test standard apps and elevated/protected failures.
+- [ ] Test representative apps and OS permission/compositor restrictions; document unsupported capture and fallback routes.
 - [ ] Keep manual copy as an explicit fallback.
 
 **Gate:** no Chrome DevTools launch, stuck modifiers, unexpected whole-document reading, or overwritten later user clipboard content.
@@ -961,7 +968,7 @@ Implementation begins only after a separate user instruction. Complete milestone
 ### Step 9 — Build the native bridge
 
 - [ ] Implement framed reads/writes, byte caps, and schema validation.
-- [ ] Add per-user pipe security and caller-origin handling.
+- [ ] Add per-user pipe or Unix-socket security, native-host registration, and caller-origin handling on every target OS.
 - [ ] Add hello, pairing, revoke, speak, control, and state.
 - [ ] Implement launch/reconnect timeouts and request deduplication.
 - [ ] Test with a minimal extension before the picker.
@@ -993,7 +1000,7 @@ Implementation begins only after a separate user instruction. Complete milestone
 ### Step 12 — Verify and package
 
 - [ ] Run the matrix in §19.
-- [ ] Verify fresh-user installation and uninstall on Windows.
+- [ ] Verify fresh-user installation and uninstall on each declared Windows, macOS, and Linux package target.
 - [ ] Verify offline operation after model installation.
 - [ ] Review licenses, permissions, logging, and accessibility.
 - [ ] Package private installer and extension instructions.
@@ -1007,7 +1014,7 @@ Implementation begins only after a separate user instruction. Complete milestone
 - [ ] Edge verification and packaging.
 - [ ] Audio export, reading queue, or exact word alignment as separate specs.
 - [ ] Additional languages with independent quality reports.
-- [ ] macOS/Linux platform plan if requested.
+- [ ] Broader Linux desktop/compositor support and other platforms only after explicit compatibility review.
 
 ## 19. Verification matrix
 
@@ -1017,7 +1024,7 @@ Implementation begins only after a separate user instruction. Complete milestone
 | Playback | Pause/resume, stop during load, rapid replacement, rate changes, seek | No stale audio or incorrect session state |
 | Resource use | Eco/Balanced, CPU/GPU, 30-minute read, 3× playback, pressure | Measured targets and bounded memory behavior |
 | Models | Interrupted download, wrong hash, insufficient disk, failed update | Prior working model preserved; actionable error |
-| Capture | Notepad, Word, Chrome, VS Code, Acrobat, Slack, Terminal | Selected text or honest fallback; no corruption |
+| Capture | Representative native/browser/editor/PDF apps on each OS | Selected text or honest fallback; no corruption |
 | Picker | News page, docs, GitHub, email UI, SPA, lists, short heading | Predictable candidate and correct visible text |
 | Frames | Same/cross-origin, nested, inaccessible, navigation | Single owner; no stale-document extraction |
 | Keyboard | Ctrl+C/V/L, Alt+Tab, AltGr, IME, key repeat, held modifiers | Normal behavior outside armed picker |
@@ -1025,14 +1032,15 @@ Implementation begins only after a separate user instruction. Complete milestone
 | Output device | Unplug, Bluetooth, sleep/wake, changed default | Preserved position or clear paused recovery |
 | UI | DPI, narrow work area, dark/high contrast, keyboard-only | No clipping or inaccessible controls |
 | Privacy | Network disabled, log inspection, history off, incognito disabled | Local reading and no unsolicited content retention |
-| Packaging | Fresh install, upgrade, uninstall, missing bridge | Correct per-user paths and recovery guidance |
+| Packaging | Fresh install, upgrade, uninstall, missing bridge on each OS | Correct user paths, native-host registration, recovery guidance |
+| Platform behavior | Hotkeys, background, focus-safe player on Windows, macOS, Linux X11 and named Wayland session | Working action or documented OS restriction with tested fallback |
 
 Benchmark procedure: one cold launch plus at least 20 warm starts per chosen configuration; record p50/p95, process-tree memory, total-machine-normalized CPU, provider-specific GPU memory, RTF, and underruns. Use the same corpus and repeat under a reproducible foreground workload. Keep quality listening separate from throughput measurements.
 
 ## 20. Definition of done
 
 - [ ] Attractive, reviewed UI exists for desktop, player, and extension states.
-- [ ] Clipboard and manual input work with an offline voice before model downloads.
+- [ ] Clipboard and manual input work offline once a usable voice is installed; a zero-download system fallback is provided only where verified.
 - [ ] At least one downloadable quality voice passes recorded evaluation.
 - [ ] CPU operation is a complete supported mode.
 - [ ] At least one GPU combination is verified if GPU support is advertised.
@@ -1044,14 +1052,14 @@ Benchmark procedure: one cold launch plus at least 20 warm starts per chosen con
 - [ ] Failures are visible and recoverable.
 - [ ] No LLM or cloud inference dependency exists.
 - [ ] No source text is transmitted externally for processing.
-- [ ] Tests, benchmarks, compatibility notes, and install instructions accompany the release.
+- [ ] Windows, macOS, Linux X11, and declared Wayland environments have separate tests, benchmarks, capability notes, and install instructions; unverified combinations are not advertised as supported.
 
 ## 21. Corrections and deliberate changes from the pasted v2
 
 | Pasted issue or ambiguity | Decision in this spec |
 |---|---|
 | Missing v1 requirements | Self-contained behavior and contracts |
-| .NET 8 fixed baseline | Recommend current supported LTS, presently .NET 10 |
+| Windows-only WPF/.NET stack | Tauri 2 + React/TypeScript + Rust from the shared conversation; native adapters per OS |
 | Model quality/speed asserted without measurements | Benchmark and listening gates |
 | “One voice per Piper file” assumed universally | Capability metadata supports actual single/multi-speaker artifacts |
 | Active/update/download states conflated | Separate installation, activation, update dimensions |
@@ -1069,18 +1077,18 @@ Benchmark procedure: one cold launch plus at least 20 warm starts per chosen con
 | Force-release/restore physical modifiers | Wait for release, then bounded safe fallback |
 | Clipboard always restored unconditionally | Preserve later user clipboard changes; skip unsafe capture |
 | Full duration known at acceptance | Estimate/null until synthesis supplies actual timing |
-| Zero WPF frame allocations guaranteed by API choice | Measure UI allocation; strict audio-callback rule |
+| Zero WPF frame allocations guaranteed by API choice | Measure WebView rendering; strict native audio-callback rule |
 | Exact reference screenshot implied | No screenshot supplied; follow documented tokens only |
 
 ## 22. Decisions to confirm before implementation
 
 These do not prevent using this document as a planning artifact.
 
-1. Windows-first versus macOS-first/cross-platform.
+1. Exact OS releases, CPU architectures, Linux distributions, and Wayland compositors to claim as supported. Cross-platform desktop scope and Tauri stack are set.
 2. Actual CPU/GPU and RAM available for the primary performance target.
 3. Required languages beyond English, including whether Hindi is mandatory.
 4. Private personal use versus a distributable product, affecting Piper integration and packaging choices.
-5. Preferred default trigger: Ctrl, Alt, or shortcut-only. All remain configurable.
+5. Preferred default browser picker trigger: Ctrl, Alt, or shortcut-only. All remain configurable.
 6. Whether public Chrome Web Store distribution belongs in the first release.
 
 Until confirmed, use the assumptions in §1.1 and do not silently expand scope.
@@ -1091,7 +1099,8 @@ The following text may be copied into a future development task. It is not an in
 
 ```text
 Implement SpeakIt using spec/SpeakIt-Product-Spec.md as the source of truth.
-First resolve its platform, hardware, language, and distribution assumptions.
+Use Tauri 2, React/TypeScript, Rust core and native ONNX TTS worker.
+Resolve exact OS versions, hardware, language, and distribution targets.
 Keep all speech local. Do not add an LLM, summarization, rewriting, or cloud TTS.
 Apply the installed frontend-design skill to the product UI and preserve the
 reading-focused design, waveform player, and accessibility requirements.
@@ -1102,7 +1111,7 @@ Implement resource budgets, cancellation, explicit CPU/GPU reporting, model
 verification, and a permission-aware Chrome picker with Ctrl/Alt long press,
 scope controls, text preview, Copy text, and Listen. Verify each milestone's
 gate and report measured evidence rather than assumed performance. Do not
-publish or expand platform scope without a separate request.
+publish or add LLM/STT features without a separate request.
 ```
 
 ## 24. References and evidence boundary
@@ -1113,12 +1122,19 @@ Primary sources consulted during specification preparation:
 2. [Maintained Piper repository](https://github.com/OHF-Voice/piper1-gpl) — engine and license information.
 3. [ONNX Runtime execution providers](https://onnxruntime.ai/docs/execution-providers/) — available acceleration backends.
 4. [ONNX Runtime thread management](https://onnxruntime.ai/docs/performance/tune-performance/threading.html) — thread pools and spinning controls.
-5. [.NET support policy](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core) — supported runtime lifecycle.
+5. [Tauri 2](https://v2.tauri.app/start/) — cross-platform desktop shell and Rust command bridge.
 6. [Chrome Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) — transport, limits, registration, caller origin.
 7. [Chrome activeTab](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab) — temporary permission model.
 8. [Chrome content scripts](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts) — script isolation and frames.
 9. [Chrome service-worker lifecycle](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle) — restartable extension background work.
 10. [MDN innerText](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText) — rendered versus detached text behavior.
 11. [Frontend design skill source](https://github.com/anthropics/skills/tree/main/skills/frontend-design) — design process applied to this spec.
+12. [Shared architecture conversation](https://chatgpt.com/share/6ab777c9-6118-83e8-8ed4-fe510c699ce2) — user-provided Tauri/Rust/React and native ONNX TTS direction; its LLM material is out of scope.
+13. [Tauri Global Shortcut plugin](https://v2.tauri.app/plugin/global-shortcut/) — candidate registered hotkey API.
+14. [Tauri Shell plugin](https://v2.tauri.app/plugin/shell/) — candidate supervised external worker launch.
+15. [Tauri Autostart plugin](https://v2.tauri.app/plugin/autostart/) — candidate login startup control.
+16. [XDG GlobalShortcuts portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.GlobalShortcuts.html) — Linux compositor-dependent global shortcuts.
+17. [CPAL](https://github.com/RustAudio/cpal) — cross-platform Rust audio output candidate and backend requirements.
+18. [Tauri sidecar guide](https://v2.tauri.app/develop/sidecar/) — packaging worker binaries.
 
-No product implementation, executable prototype, audio benchmark, or visual screenshot validation was performed during this specification task. The installed design skill and this Markdown document are the deliverables.
+No product implementation, executable prototype, audio benchmark, or visual screenshot validation was performed during this specification task. The installed design skill and these Markdown specification files are the deliverables. The share conversation was read in the browser; its architecture is treated as a design input, not proof that every native API works on every OS.

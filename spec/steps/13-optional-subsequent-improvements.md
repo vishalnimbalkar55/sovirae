@@ -10,7 +10,7 @@
 - [ ] Edge verification and packaging.
 - [ ] Audio export, reading queue, or exact word alignment as separate specs.
 - [ ] Additional languages with independent quality reports.
-- [ ] macOS/Linux platform plan if requested.
+- [ ] Broader Linux desktop/compositor support and other platforms only after explicit compatibility review.
 
 ## Relevant requirements
 

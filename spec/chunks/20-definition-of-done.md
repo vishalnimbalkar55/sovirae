@@ -2,10 +2,10 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is a topic-sized extract of the full specification. Original requirement numbering is preserved.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 - [ ] Attractive, reviewed UI exists for desktop, player, and extension states.
-- [ ] Clipboard and manual input work with an offline voice before model downloads.
+- [ ] Clipboard and manual input work offline once a usable voice is installed; a zero-download system fallback is provided only where verified.
 - [ ] At least one downloadable quality voice passes recorded evaluation.
 - [ ] CPU operation is a complete supported mode.
 - [ ] At least one GPU combination is verified if GPU support is advertised.
@@ -17,7 +17,7 @@
 - [ ] Failures are visible and recoverable.
 - [ ] No LLM or cloud inference dependency exists.
 - [ ] No source text is transmitted externally for processing.
-- [ ] Tests, benchmarks, compatibility notes, and install instructions accompany the release.
+- [ ] Windows, macOS, Linux X11, and declared Wayland environments have separate tests, benchmarks, capability notes, and install instructions; unverified combinations are not advertised as supported.
 
 ---
 

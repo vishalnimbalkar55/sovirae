@@ -6,7 +6,7 @@
 
 **Dependency:** None; resolve these assumptions before development.
 
-- [ ] Confirm Windows-first target and actual CPU/GPU hardware.
+- [ ] Confirm exact Windows, macOS, and Linux release versions/architectures and representative CPU/GPU hardware.
 - [ ] Confirm English-first scope and any required Hindi/other voices.
 - [ ] Record private versus public distribution intent.
 - [ ] Pin SDK/runtime candidates and catalog schema.

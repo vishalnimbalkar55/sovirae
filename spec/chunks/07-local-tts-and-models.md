@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is a topic-sized extract of the full specification. Original requirement numbering is preserved.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 ### 7.1 Model shortlist and selection policy
 
@@ -10,7 +10,7 @@
 |---|---|---|---|
 | Kokoro-82M | Primary quality candidate | CPU baseline; GPU only for tested export/provider combinations | Pass pronunciation, startup, resource, and listening gates |
 | Piper | Lightweight alternative | CPU first | Pass quality checks and engine/voice distribution-license review |
-| Installed Windows voice | Immediate fallback | OS-managed local speech | Verify offline behavior and compatible audio capture |
+| Platform system voice, where available | Optional zero-download fallback | OS-managed local speech | Test whether each OS exposes offline voices and controllable PCM; do not promise on Linux |
 
 Kokoro has 82 million parameters and Apache-2.0 model weights. That makes it a reasonable compact quality candidate, not proof of performance on the user's hardware. Its official example emits 24 kHz audio; use each artifact's actual declared format. [Model card](https://huggingface.co/hexgrad/Kokoro-82M)
 
@@ -26,7 +26,7 @@ Prepare a fixed 30-passage corpus covering:
 - Long words, emojis, punctuation-only input, and mixed-script text.
 - English accents separately; Hindi and other languages only if explicitly included in the supported catalog.
 
-Compare at least three available Kokoro voices, one suitable Piper voice if included, and the built-in fallback. Review naturalness, crisp consonants, intelligibility, pronunciation, pauses, missing/repeated words, clipping, and fatigue over 15 minutes.
+Compare at least three available Kokoro voices, one suitable Piper voice if included, and any verified OS built-in fallback. Review naturalness, crisp consonants, intelligibility, pronunciation, pauses, missing/repeated words, clipping, and fatigue over 15 minutes.
 
 Proposed acceptance: average at least 4/5 for clarity and listening comfort from three listeners on the agreed corpus; no systematic omitted/repeated words or audible clipping. Record listeners, equipment, text, model hash, and settings. If only the owner evaluates a private build, label that limitation rather than calling it a broader study.
 
@@ -38,7 +38,7 @@ Quantized and full-precision artifacts must be compared directly. An int8 file m
 - GPU selection is explicit and reversible; CPU remains available.
 - Auto mode benchmarks a small local sample with consent before selecting a device.
 - Record model export, runtime version, execution provider, device, and any CPU fallback nodes.
-- Candidate GPU providers include CUDA for compatible NVIDIA hardware and DirectML for compatible Windows GPUs. Provider availability is not model compatibility; validate actual execution. [Provider documentation](https://onnxruntime.ai/docs/execution-providers/)
+- Candidate GPU providers include CUDA for compatible NVIDIA hardware, DirectML for compatible Windows GPUs, CoreML on eligible Macs, and OpenVINO where the exact Intel/export/OS combination is tested. Provider availability is not model compatibility; validate actual execution and CPU fallback nodes. Do not import the shared conversation’s `llama.cpp` GPU mapping into ONNX TTS. [Provider documentation](https://onnxruntime.ai/docs/execution-providers/)
 - Never label a session “GPU” merely because the machine has a GPU.
 - If GPU loading fails, offer CPU fallback and show the reason. Do not silently download large runtimes.
 - On battery, Auto prefers Eco CPU unless the measured GPU path is more efficient.

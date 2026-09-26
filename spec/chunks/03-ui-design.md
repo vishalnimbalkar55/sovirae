@@ -2,13 +2,13 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is a topic-sized extract of the full specification. Original requirement numbering is preserved.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 ### 3.1 Selected skill
 
 The `frontend-design` skill from [Anthropic's skills repository](https://github.com/anthropics/skills/tree/main/skills/frontend-design) was installed and read for this specification. Local installation: `/Users/zee/.codex/skills/frontend-design/SKILL.md`.
 
-It is a suitable design-direction skill, not a claim that one objectively “best” UI skill exists. Its principles are adapted to a native desktop product: intentional typography, meaningful visual hierarchy, restrained animation, realistic content, and one memorable visual element. No UI code or prototype has been implemented.
+It is a suitable design-direction skill, not a claim that one objectively “best” UI skill exists. Its principles are adapted to a Tauri desktop product: intentional typography, meaningful visual hierarchy, restrained animation, realistic content, and one memorable visual element. No UI code or prototype has been implemented.
 
 ### 3.2 Concept: a quiet reading desk
 

@@ -2,13 +2,9 @@
 
 **Planning only. No application implementation has started.**
 
-Read the [Windows prompt feature comparison](Windows-Prompt-Feature-Review.md) for the latest selective review and preferred shortcuts. Cross-platform shell selection remains unresolved; the Windows architecture must not be treated as portable.
+The [shared conversation](https://chatgpt.com/share/6ab777c9-6118-83e8-8ed4-fe510c699ce2) establishes the architecture: **Tauri 2 + React/TypeScript + Rust**, with local ONNX TTS. Windows, macOS, and Linux desktop are target platforms. LLM and STT are outside the current product. Read the [architecture](chunks/05-architecture.md) and [Windows prompt feature comparison](Windows-Prompt-Feature-Review.md) for the selected behaviors and shortcuts.
 
-Start with the [decisions to confirm](chunks/22-decisions-to-confirm.md), then use the [small implementation steps](steps/README.md). Open only the linked requirements needed for the current step.
-
-The specification is split into **24 topic files** and **14 individual delivery steps**. Every step includes a checklist, dependency, acceptance gate, and related requirements. The original [complete specification](SpeakIt-Product-Spec.md) is retained for copying the whole document.
-
-These files preserve the full specification's requirements; they do not introduce new product scope. Topic and step files are synchronized extracts of the full document. When requirements change, update the full document and the corresponding extracts together. The full document resolves any accidental disagreement.
+The specification has **24 topic files** and **14 individual delivery steps**. The [complete specification](SpeakIt-Product-Spec.md) remains available for copying. Topic and step files are synchronized extracts; update both representations when requirements change.
 
 ## Small delivery steps
 

@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is a topic-sized extract of the full specification. Original requirement numbering is preserved.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 ### 2.1 Required outcomes
 
@@ -27,7 +27,7 @@
 - Voice cloning, training, celebrity voice imitation, and microphone input.
 - OCR, image reading, scanned PDF recognition, and DRM bypass.
 - A second audio engine or player inside the extension.
-- Mobile clients, macOS/Linux desktop clients, and multi-device synchronization.
+- Mobile clients and multi-device synchronization. Windows, macOS, and Linux desktop are in scope, with platform-specific capability gates.
 - Playback queues, batch audiobook production, and audio-file export in the first release.
 - A website or marketing landing page; the UI design skill is used for product design guidance.
 

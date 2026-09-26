@@ -2,7 +2,7 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is a topic-sized extract of the full specification. Original requirement numbering is preserved.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 All numbers below are proposed engineering targets. No benchmark has been run for this planning task. Final supported hardware requires measurements and a published compatibility table.
 
@@ -13,7 +13,7 @@ All numbers below are proposed engineering targets. No benchmark has been run fo
 | Modest laptop | Four physical CPU cores, 8 GB RAM, SSD, no discrete GPU | Eco and Balanced CPU |
 | Typical desktop | Six or more CPU cores, 16 GB RAM | Balanced CPU |
 | GPU desktop | Compatible NVIDIA GPU with at least 4 GB VRAM, 16 GB RAM | Explicit supported GPU path |
-| Integrated GPU | Supported Intel/AMD Windows GPU | Optional provider validation |
+| Integrated GPU | Supported Intel/AMD Windows or Linux GPU, or Apple Silicon | Optional provider validation by exact model/export |
 
 Record exact CPU/GPU model, OS build, driver, power mode, RAM, runtime, and model hash. Do not claim universal support from these broad classes alone.
 

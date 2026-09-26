@@ -2,12 +2,12 @@
 
 [Spec index](../README.md) · [Full specification](../SpeakIt-Product-Spec.md)
 
-**Status: planning only.** This file is a topic-sized extract of the full specification. Original requirement numbering is preserved.
+**Status: planning only.** This topic is synchronized with the full specification; original numbering is preserved.
 
 | Pasted issue or ambiguity | Decision in this spec |
 |---|---|
 | Missing v1 requirements | Self-contained behavior and contracts |
-| .NET 8 fixed baseline | Recommend current supported LTS, presently .NET 10 |
+| Windows-only WPF/.NET stack | Tauri 2 + React/TypeScript + Rust from the shared conversation; native adapters per OS |
 | Model quality/speed asserted without measurements | Benchmark and listening gates |
 | “One voice per Piper file” assumed universally | Capability metadata supports actual single/multi-speaker artifacts |
 | Active/update/download states conflated | Separate installation, activation, update dimensions |
@@ -25,7 +25,7 @@
 | Force-release/restore physical modifiers | Wait for release, then bounded safe fallback |
 | Clipboard always restored unconditionally | Preserve later user clipboard changes; skip unsafe capture |
 | Full duration known at acceptance | Estimate/null until synthesis supplies actual timing |
-| Zero WPF frame allocations guaranteed by API choice | Measure UI allocation; strict audio-callback rule |
+| Zero WPF frame allocations guaranteed by API choice | Measure WebView rendering; strict native audio-callback rule |
 | Exact reference screenshot implied | No screenshot supplied; follow documented tokens only |
 
 ---
