@@ -9,7 +9,7 @@ const REPLY_TIMEOUT_MS = 10000;
 const HELLO_TIMEOUT_MS = 8000;
 const PAIRING_WAIT_MS = 90000;
 const CONTENT_FILES = ['lib/text.js', 'lib/trigger.js', 'content.js'];
-const ALWAYS_READY_ID = 'sovirae-always-ready';
+const LEGACY_ALWAYS_READY_ID = 'sovirae-always-ready';
 
 let port = null;
 let helloAck = null;
@@ -228,25 +228,26 @@ async function allowedOn(url) {
   return s.enabled && !!origin && !s.disabledOrigins.includes(origin);
 }
 
-// ---- Always-ready sites (optional host permissions) ---------------------------
+// ---- Content script in open tabs --------------------------------------------------
 
-/** Registers the picker on every site the user granted access to. */
-async function syncAlwaysReady() {
-  const { origins = [] } = await chrome.permissions.getAll();
-  const matches = origins.filter((o) => /^https?:\/\//.test(o));
-  try {
-    await chrome.scripting.unregisterContentScripts({ ids: [ALWAYS_READY_ID] });
-  } catch {
-    // Not registered yet.
-  }
-  if (matches.length === 0) return;
-  await chrome.scripting.registerContentScripts([
-    { id: ALWAYS_READY_ID, matches, js: CONTENT_FILES, allFrames: true, runAt: 'document_idle', persistAcrossSessions: true },
-  ]);
+/**
+ * The manifest loads the picker into every page from now on, but Chrome does
+ * not add it to tabs that were already open when the extension was installed,
+ * updated, or reloaded. Load it there so a long press works without a reload.
+ */
+async function injectOpenTabs() {
+  const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] });
+  await Promise.all(tabs.map((t) => (t.id != null ? inject(t.id).catch(() => {}) : null)));
 }
 
-chrome.permissions.onAdded.addListener(syncAlwaysReady);
-chrome.permissions.onRemoved.addListener(syncAlwaysReady);
+/** Earlier builds registered the picker per site; drop that so it does not load twice. */
+async function dropLegacyRegistration() {
+  try {
+    await chrome.scripting.unregisterContentScripts({ ids: [LEGACY_ALWAYS_READY_ID] });
+  } catch {
+    // Never registered.
+  }
+}
 
 // ---- Page actions -----------------------------------------------------------------
 
@@ -399,7 +400,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'sovirae:picker-armed': {
         // One picker per tab: disarm the other frames.
         if (sender.tab?.id != null) {
-          chrome.tabs.sendMessage(sender.tab.id, { type: 'sovirae:disarm', except: sender.frameId }).catch(() => {});
+          chrome.tabs.sendMessage(sender.tab.id, { type: 'sovirae:disarm', except: message.token }).catch(() => {});
         }
         sendResponse({ ok: true });
         break;
@@ -434,10 +435,9 @@ chrome.runtime.onInstalled.addListener(async () => {
     chrome.contextMenus.create({ id: 'sovirae-read', title: 'Read with Sovirae', contexts: ['selection'] });
     chrome.contextMenus.create({ id: 'sovirae-pick', title: 'Pick text to read with Sovirae', contexts: ['page'] });
   });
-  await syncAlwaysReady();
+  await dropLegacyRegistration();
+  await injectOpenTabs();
 });
-
-chrome.runtime.onStartup.addListener(syncAlwaysReady);
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'sovirae-read') readSelection(tab, info.frameId);

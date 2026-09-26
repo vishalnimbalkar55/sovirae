@@ -26,6 +26,9 @@
   let idleTimer = null;
   let frameRequest = 0;
   let ui = null;
+  // Identifies this frame's picker so the "one picker per tab" broadcast
+  // does not close the picker that sent it.
+  const frameToken = Math.random().toString(36).slice(2) + Date.now().toString(36);
 
   // ---- Messaging --------------------------------------------------------------------
 
@@ -88,6 +91,7 @@
     .banner { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px;
       padding: 8px 8px 8px 14px; border-radius: 12px; background: var(--surface); color: var(--ink);
       box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px var(--hair); pointer-events: auto; max-width: calc(100vw - 24px); }
+    .banner .mark { flex: none; width: 20px; height: 20px; color: var(--violet); }
     .banner b { font-weight: 650; }
     .muted { color: var(--ink2); }
     .kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px; border: 1px solid var(--hair);
@@ -258,7 +262,9 @@
         u.root.appendChild(u.chip);
       }
       u.chip.querySelector('.label').textContent = describe(candidate);
-      const top = r.top > 34 ? r.top - 32 : Math.min(r.bottom + 6, innerHeight - 30);
+      // Above the block, unless that would sit under the banner or off screen.
+      const clear = u.banner ? u.banner.getBoundingClientRect().bottom + 6 : 2;
+      const top = r.top - 32 >= clear ? r.top - 32 : Math.min(r.bottom + 6, innerHeight - 30);
       Object.assign(u.chip.style, { top: `${top}px`, left: `${Math.max(8, Math.min(r.left, innerWidth - 260))}px` });
     } else {
       remove('chip');
@@ -313,7 +319,7 @@
     u.banner.innerHTML = `${MARK}<span><b>Pick text to read.</b> <span class="muted">Click a block. <span class="kbd">↑</span> <span class="kbd">↓</span> resize, <span class="kbd">esc</span> exits.</span></span><button class="btn" data-act="close">Done</button>`;
     u.banner.querySelector('[data-act=close]').addEventListener('click', exitPicker);
     u.root.appendChild(u.banner);
-    send({ type: 'sovirae:picker-armed' });
+    send({ type: 'sovirae:picker-armed', token: frameToken });
     if (pointer.x >= 0) setCandidate(blockAt(pointer.x, pointer.y));
     touch();
   }
@@ -560,7 +566,7 @@
         break;
       case 'sovirae:disarm':
         // Another frame of this tab took over the picker.
-        exitPicker();
+        if (message.except !== frameToken) exitPicker();
         break;
       case 'sovirae:read-text':
         readText(message.text);

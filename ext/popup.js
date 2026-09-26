@@ -1,5 +1,5 @@
 // Toolbar popup: connection status, playback controls, page actions, and
-// per-site access (spec §12.2).
+// per-site on/off (spec §12.2).
 
 const $ = (id) => document.getElementById(id);
 const PROBLEMS = {
@@ -74,10 +74,7 @@ async function renderSite() {
     p.innerHTML = "<b>Chrome doesn't let extensions read this page.</b> Copy the text and use Speak clipboard in Sovirae.";
     return;
   }
-  $('ready-label').textContent = `Always ready on ${new URL(origin).host}`;
-  $('ready').checked = await chrome.permissions.contains({ origins: [`${origin}/*`] });
   $('site-on').checked = !settings.disabledOrigins?.includes(origin);
-  $('ready').disabled = !$('site-on').checked;
 }
 
 async function renderShortcuts() {
@@ -124,13 +121,6 @@ document.querySelectorAll('[data-control]').forEach((b) =>
     send({ type: 'sovirae:control', ...msg });
   }),
 );
-
-$('ready').addEventListener('change', async (e) => {
-  const pattern = { origins: [`${origin}/*`] };
-  // Must run inside the click for Chrome to show its permission prompt.
-  const ok = e.target.checked ? await chrome.permissions.request(pattern) : await chrome.permissions.remove(pattern);
-  if (!ok) e.target.checked = !e.target.checked;
-});
 
 $('site-on').addEventListener('change', async (e) => {
   const { disabledOrigins = [] } = await chrome.storage.local.get('disabledOrigins');

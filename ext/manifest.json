@@ -7,7 +7,10 @@
   "minimum_chrome_version": "116",
   "background": { "service_worker": "sw.js", "type": "module" },
   "permissions": ["nativeMessaging", "storage", "activeTab", "scripting", "contextMenus"],
-  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "content_scripts": [
+    { "matches": ["http://*/*", "https://*/*"], "js": ["lib/text.js", "lib/trigger.js", "content.js"], "all_frames": true, "run_at": "document_idle" }
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_title": "Sovirae",

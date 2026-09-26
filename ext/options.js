@@ -1,4 +1,4 @@
-// Options: trigger, hold time, and per-site access (spec §12.2).
+// Options: trigger, hold time, and sites turned off (spec §12.2).
 
 const $ = (id) => document.getElementById(id);
 let isMac = false;
@@ -48,11 +48,6 @@ async function render() {
   $('hold-value').textContent = `${(s.holdMs / 1000).toFixed(2)} s`;
   $('hold').disabled = s.trigger === 'shortcut';
 
-  const { origins = [] } = await chrome.permissions.getAll();
-  siteList('ready', origins.filter((o) => /^https?:/.test(o)), async (o) => {
-    await chrome.permissions.remove({ origins: [o] });
-    render();
-  }, 'None yet. Turn on “Always ready” from the toolbar button on a site.');
   siteList('off', s.disabledOrigins, async (o) => {
     await save({ disabledOrigins: s.disabledOrigins.filter((x) => x !== o) });
     render();

@@ -16,12 +16,19 @@ builds the app, installer, and Chrome extension:
 npm run build:all
 ```
 
-It prints where everything was written:
+Everything ends up in `build/` (cleared and refilled on each build):
 
 ```
-App:       target/release/bundle/macos/Sovirae.app
-Installer: target/release/bundle/dmg/Sovirae_0.1.0_aarch64.dmg
-Extension: target/release/bundle/macos/Sovirae.app/Contents/Resources/ext
+build/app/Sovirae.app                 the app
+build/app/Sovirae_0.1.0_aarch64.dmg   the installer
+build/ext/                            the Chrome extension, for Load unpacked
+```
+
+`npm run app:build` fills `build/` too. To copy the last build into `build/`
+again without rebuilding (for example after deleting the folder):
+
+```bash
+npm run build:collect
 ```
 
 Skip the tests with `bash scripts/build.sh --skip-tests`. A full build takes
@@ -50,7 +57,7 @@ if espeak-ng is absent (the app still builds; system voices still work).
 | `speakit-kokoro-worker` | Kokoro inference in its own process (ONNX Runtime built in) |
 | `speakit-native-host` | Connects Chrome to the app |
 
-`Contents/Resources/ext/` is the Chrome extension, ready for **Load unpacked**.
+`build/ext/` is the Chrome extension, ready for **Load unpacked** (the app also carries a copy in `Contents/Resources/ext/`).
 Neural voice models are not bundled; download them in Sovirae › Voices.
 
 The build is ad-hoc signed, which is fine on the machine that built it. To
@@ -62,6 +69,7 @@ share it, sign and notarize with an Apple Developer ID.
 |---|---|
 | Build everything (tests + app + installer + extension) | `npm run build:all` |
 | Build without tests | `npm run app:build` |
+| Copy the last build into `build/` again (no rebuild) | `npm run build:collect` |
 | Run in development (hot reload) | `npm run app:dev` |
 | Run all tests (Rust + extension) | `npm test` |
 | Work on the UI in a browser with sample data | `npm run dev`, then open `http://localhost:1420` |
@@ -80,8 +88,8 @@ cargo run --release -p speakit-tts --example kokoro_bench -- \
 1. Start Sovirae once so it registers its connection with Chrome, Edge, Brave,
    Chromium, Vivaldi, and Arc.
 2. Open `chrome://extensions`, turn on **Developer mode**, choose **Load
-   unpacked**, and select the extension folder (Sovirae › Extension › Show
-   folder). In development this is [`ext/`](ext/).
+   unpacked**, and select `build/ext` (or Sovirae › Extension › Show folder).
+   In development you can load [`ext/`](ext/) directly.
 3. Select text and press **⌥⇧S**, right-click › **Read with Sovirae**, or hold
    **Option** to pick part of a page. Allow Chrome the first time Sovirae asks.
 

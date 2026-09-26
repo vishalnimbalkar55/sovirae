@@ -641,11 +641,11 @@ See the [selective comparison](Windows-Prompt-Feature-Review.md) for platform co
 Two supported access modes:
 
 1. **On demand:** `activeTab` and scripting access after an explicit extension action or command; selection/context-menu reading and click-to-arm picker.
-2. **Always ready on approved sites:** user-granted optional HTTP/HTTPS host access, with registered content scripts so long-press detection is already present.
+2. **Always ready (default, decided 2026-09-26):** HTTP/HTTPS host access is part of the manifest and the content script is declared for every HTTP/HTTPS page, so a long press works everywhere without a first click. On install, update, or reload the script is also injected into tabs that were already open. "Use Sovirae on this site" and master Off still stop it per site or everywhere. Trade-off accepted: a Chrome Web Store install shows the "Read and change all your data on all websites" warning.
 
 Do not require all-site access merely to use selection reading. Explain that a long press cannot be detected before a content script is permitted and loaded. `activeTab` is temporary access from supported user gestures. [Chrome activeTab documentation](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab)
 
-Proposed permissions: `nativeMessaging`, `storage`, `activeTab`, `scripting`, `contextMenus`; optional HTTP/HTTPS host permissions. Add further permissions only for a concrete tested need.
+Permissions: `nativeMessaging`, `storage`, `activeTab`, `scripting`, `contextMenus`; HTTP/HTTPS host permissions (required since 2026-09-26; previously optional per site, which meant a long press did nothing until the user clicked Sovirae on that page). Add further permissions only for a concrete tested need.
 
 Master Off disables input listeners and active pickers, but retains the lightweight control channel needed to receive an enable/settings change. This corrects the impossible requirement that an off extension have no listeners of any kind.
 

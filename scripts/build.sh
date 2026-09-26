@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Builds the complete Sovirae project: checks prerequisites, installs
 # JavaScript packages, runs every test, then bundles the macOS app and DMG
-# (app + Kokoro worker + Chrome native host + Chrome extension).
+# (app + Kokoro worker + Chrome native host + Chrome extension), and
+# gathers them into build/app and build/ext.
 #
 #   scripts/build.sh              full build with tests
 #   scripts/build.sh --skip-tests build only
@@ -36,7 +37,7 @@ if (( ! SKIP_TESTS )); then
 fi
 
 step "Building the app, workers, and extension bundle"
-npm run app:build
+npx tauri build
 
 APP="target/release/bundle/macos/Sovirae.app"
 DMG=$(ls target/release/bundle/dmg/*.dmg 2>/dev/null | head -1)
@@ -45,7 +46,5 @@ for f in speakit speakit-kokoro-worker speakit-native-host; do
 done
 [[ -f "$APP/Contents/Resources/ext/manifest.json" ]] || fail "The Chrome extension is missing from the bundle."
 
-step "Done"
-echo "App:       $APP"
-echo "Installer: ${DMG:-not built}"
-echo "Extension: $APP/Contents/Resources/ext  (Load unpacked in chrome://extensions)"
+step "Collecting outputs into build/"
+bash scripts/collect-build.sh
