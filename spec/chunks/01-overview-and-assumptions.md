@@ -20,12 +20,12 @@ Inputs reviewed:
 | Topic | Working decision |
 |---|---|
 | Product name | SpeakIt |
-| Desktop platforms | Windows 11 x64, macOS arm64/x64, and named Linux desktop targets; test each release separately |
+| Desktop platforms | macOS 15 arm64 is built and verified first (confirmed 2026-09-26). Windows 11 x64 and named Linux targets keep separate adapters and are tested before being claimed |
 | Desktop framework | Tauri 2 + React/TypeScript + Rust, following the shared conversation |
 | Current development workspace | macOS; Windows and Linux require separate native test environments |
 | “No LLM” | No chat model, summarization, rewriting, translation, agent, or cloud language-model dependency; dedicated local neural TTS remains in scope |
 | “Long press control” | Support long-press Ctrl explicitly; also allow Alt and shortcut-only activation |
-| Initial language validation | English US/UK; other catalog languages only marked supported after testing |
+| Initial language validation | English US/UK only (confirmed 2026-09-26); other catalog languages only marked supported after testing |
 | Default hardware policy | Balanced CPU; optional verified GPU acceleration |
 | New read during playback | Replace current reading; no queue in this release |
 | Distribution | Private native packages for validated target OSes plus unpacked extension first; public distribution later |

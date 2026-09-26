@@ -50,6 +50,7 @@ Rules:
 8. Register capture-phase handlers, but acknowledge that a content script cannot guarantee precedence over browser/OS shortcuts or hostile pages.
 9. If Alt release still opens browser chrome on a tested configuration, direct the user to Ctrl or shortcut-only mode; `preventDefault` is not a universal OS-menu guarantee.
 10. A Chrome command also arms the picker for keyboard users and permission-limited mode.
+11. On macOS, the default trigger is long-press Option, with Control and shortcut-only as alternatives. Control+click is a secondary click there. Preserve Command+C/V/L, Command+click, and Command+Tab in place of the Ctrl shortcuts in rule 4.
 
 ### 12.4 Candidate discovery and scope
 

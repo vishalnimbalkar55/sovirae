@@ -14,6 +14,8 @@
 
 Kokoro has 82 million parameters and Apache-2.0 model weights. That makes it a reasonable compact quality candidate, not proof of performance on the user's hardware. Its official example emits 24 kHz audio; use each artifact's actual declared format. [Model card](https://huggingface.co/hexgrad/Kokoro-82M)
 
+The weights license does not cover text-to-phoneme conversion. Kokoro's reference pipeline uses the `misaki` G2P, which falls back to espeak-ng (GPL-3.0) for out-of-vocabulary words. Record the exact phonemizer used in the Rust worker and its license before packaging. A GPL phonemizer is acceptable for private use but must be resolved before public distribution.
+
 The currently maintained Piper repository describes a local engine and carries GPL-3.0 licensing. Review the exact engine integration and each voice's license before packaging; do not assume all voice files share one license. Piper remains conditional until those decisions are recorded. [Repository](https://github.com/OHF-Voice/piper1-gpl)
 
 ### 7.2 Quality evaluation

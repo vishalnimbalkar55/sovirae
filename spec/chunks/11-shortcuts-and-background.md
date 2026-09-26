@@ -20,6 +20,8 @@ Keep the action layout from the pasted Windows prompt. Most of these bindings we
 | Stop and hide player | `Ctrl+Shift+X` | `Command+Option+X` |
 | Stop and hide while player has focus | `Escape` | `Escape` |
 
+**Conflict policy (confirmed 2026-09-26):** keep this layout, but register only Speak clipboard and Read selected text at all times. Register Play/pause, Skip, Speed, and Stop only while a reading session exists (Preparing, Buffering, Playing, Paused, or Recovering), and release them when it ends. Several chords are ordinary editing keys: `Ctrl+Shift+Left/Right/Up/Down` select text on Windows and Linux, `Ctrl+Shift+R` is hard reload in Chrome, `Ctrl+Shift+S` is Save As in many apps, `Command+Option+Space` opens Finder search, and `Command+Option+Left/Right` switches browser tabs. The Shortcuts screen must name these known conflicts.
+
 The macOS mappings are proposals, not tested conflict-free bindings; allow the original Control+Shift bindings if the user prefers. Linux shortcuts are suggestions because the desktop/portal may assign or require approval of the final chord. The cross-platform Tauri shell is specified in [§5](05-architecture.md); every actual chord remains subject to OS registration and conflict testing.
 
 ### 11.2 Exact behavior
@@ -30,7 +32,7 @@ The macOS mappings are proposals, not tested conflict-free bindings; allow the o
 - Play/pause toggles an existing session; it never implicitly rereads old clipboard content.
 - Speed shortcuts change the current rate by 0.1 within 0.5–3.0, matching our existing control. They do not resynthesize audio.
 - Skip uses our source-time timeline and existing sentence-snap setting. Keep precise seeking available rather than making snapping mandatory.
-- Outside a reading session, playback-only actions do nothing; they do not open a window or capture text.
+- Outside a reading session, playback-only chords are not registered, so the keys keep their normal meaning in other applications. Registration and release follow session start and end without prompting the user again.
 - Escape is local to the focused player. In a shortcut recorder it cancels recording; in the Chrome picker it cancels picking. Never reserve Escape globally.
 - Ignore auto-repeat for Read selection, Speak clipboard, and Play/pause. Debounce held skip/speed keys to at most four actions per second.
 - Application-global shortcuts and the Chrome long-press picker are separate features. A normal chord must cancel a pending picker hold timer.

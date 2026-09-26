@@ -12,7 +12,7 @@
 - [ ] Spike compact overlay positioning/focus on Windows, macOS, Linux X11, and a named Wayland session.
 - [ ] Add global shortcut registration, conflict/permission feedback, and fallback actions.
 
-**Gate:** the source editor retains typing focus on every supported platform; hotkeys survive 15 minutes idle and sleep/wake where registration is available. Document Wayland limitations.
+**Gate:** the source editor retains typing focus on every supported platform, or the platform restriction is documented with a tested fallback; hotkeys survive 15 minutes idle and sleep/wake where registration is available. Document Wayland limitations.
 
 ## Relevant requirements
 

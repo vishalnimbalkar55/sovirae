@@ -1,6 +1,6 @@
 # SpeakIt — Detailed Product and Implementation Specification
 
-Version: 4.0 • Prepared: 2026-09-26 • Status: planning only
+Version: 4.1 • Prepared: 2026-09-26 • Status: development authorized, macOS first
 
 **Do not implement this document until the user explicitly asks to start development.**
 
@@ -24,12 +24,12 @@ Inputs reviewed:
 | Topic | Working decision |
 |---|---|
 | Product name | SpeakIt |
-| Desktop platforms | Windows 11 x64, macOS arm64/x64, and named Linux desktop targets; test each release separately |
+| Desktop platforms | macOS 15 arm64 is built and verified first (confirmed 2026-09-26). Windows 11 x64 and named Linux targets keep separate adapters and are tested before being claimed |
 | Desktop framework | Tauri 2 + React/TypeScript + Rust, following the shared conversation |
 | Current development workspace | macOS; Windows and Linux require separate native test environments |
 | “No LLM” | No chat model, summarization, rewriting, translation, agent, or cloud language-model dependency; dedicated local neural TTS remains in scope |
 | “Long press control” | Support long-press Ctrl explicitly; also allow Alt and shortcut-only activation |
-| Initial language validation | English US/UK; other catalog languages only marked supported after testing |
+| Initial language validation | English US/UK only (confirmed 2026-09-26); other catalog languages only marked supported after testing |
 | Default hardware policy | Balanced CPU; optional verified GPU acceleration |
 | New read during playback | Replace current reading; no queue in this release |
 | Distribution | Private native packages for validated target OSes plus unpacked extension first; public distribution later |
@@ -97,15 +97,16 @@ All sizes are device-independent pixels for desktop and CSS pixels for extension
 | Sidebar | `#F2F1EE` | `#1D1E23` | Navigation |
 | Text primary | `#1A1A1A` | `#F1F0F4` | Main text |
 | Text secondary | `#6B6862` | `#B8B6C2` | Supporting text |
-| Accent | `#7C5CFF` | `#A28BFF` | Selection, waveform, focus |
-| Accent button | `#6242D6` | `#B5A2FF` | Primary button; white/light or dark text as appropriate |
-| Border | `#E5E3DE` | `#3B3D46` | Group separation |
+| Accent | `#7C5CFF` | `#A28BFF` | Selection, waveform, focus rings; not normal-size light-theme text (4.0:1) |
+| Accent button | `#6242D6` | `#B5A2FF` | Primary button and accent-coloured text such as links; white text on light, dark text on dark |
+| Border | `#E5E3DE` | `#3B3D46` | Decorative group separation only |
+| Control border | `#8A867F` | `#737585` | Input, switch, and other control boundaries (≥ 3:1) |
 | Success | `#2E7D5B` | `#7ACBA7` | Successful state |
 | Error | `#B63229` | `#FF9C91` | Error text and icons |
 
 Typography:
 
-- UI: Segoe UI Variable, fallback Segoe UI; extension fallback `system-ui`.
+- UI: the platform system font — `-apple-system`/SF Pro on macOS, Segoe UI Variable then Segoe UI on Windows, and `system-ui` (typically Cantarell, Noto Sans, or Ubuntu) on Linux; extension uses `system-ui`. Verify metrics on each webview; do not bundle a proprietary system font.
 - Reading text: Georgia, fallback serif, user-selectable sans-serif alternative.
 - UI text 14; secondary text 12; section title 20; page title 28; reading text 18 by default.
 - Reading text adjustable 14–28 with 1.55 line height; target 60–75 characters per line.
@@ -245,6 +246,7 @@ workers/speakit-native-host/       Chrome stdio ↔ local IPC executable
 ext/                               MV3 worker, popup, options, picker
 benchmarks/                        Listening corpus and resource reports
 packaging/                         Per-platform app and host registration
+tests/                             Cross-component fixtures and integration tests
 ```
 
 These are future paths. Only `spec/` exists during this planning task. Package each worker binary for the target OS/architecture; model weights are separately downloaded and hash verified. A worker may use a shared Rust crate, but it has its own lifecycle and message boundary.
@@ -339,6 +341,8 @@ Latching resolves the ambiguity in the pasted flow: a user must be able to relea
 | Platform system voice, where available | Optional zero-download fallback | OS-managed local speech | Test whether each OS exposes offline voices and controllable PCM; do not promise on Linux |
 
 Kokoro has 82 million parameters and Apache-2.0 model weights. That makes it a reasonable compact quality candidate, not proof of performance on the user's hardware. Its official example emits 24 kHz audio; use each artifact's actual declared format. [Model card](https://huggingface.co/hexgrad/Kokoro-82M)
+
+The weights license does not cover text-to-phoneme conversion. Kokoro's reference pipeline uses the `misaki` G2P, which falls back to espeak-ng (GPL-3.0) for out-of-vocabulary words. Record the exact phonemizer used in the Rust worker and its license before packaging. A GPL phonemizer is acceptable for private use but must be resolved before public distribution.
 
 The currently maintained Piper repository describes a local engine and carries GPL-3.0 licensing. Review the exact engine integration and each voice's license before packaging; do not assume all voice files share one license. Piper remains conditional until those decisions are recorded. [Repository](https://github.com/OHF-Voice/piper1-gpl)
 
@@ -593,6 +597,8 @@ Keep the action layout from the pasted Windows prompt. Most of these bindings we
 | Stop and hide player | `Ctrl+Shift+X` | `Command+Option+X` |
 | Stop and hide while player has focus | `Escape` | `Escape` |
 
+**Conflict policy (confirmed 2026-09-26):** keep this layout, but register only Speak clipboard and Read selected text at all times. Register Play/pause, Skip, Speed, and Stop only while a reading session exists (Preparing, Buffering, Playing, Paused, or Recovering), and release them when it ends. Several chords are ordinary editing keys: `Ctrl+Shift+Left/Right/Up/Down` select text on Windows and Linux, `Ctrl+Shift+R` is hard reload in Chrome, `Ctrl+Shift+S` is Save As in many apps, `Command+Option+Space` opens Finder search, and `Command+Option+Left/Right` switches browser tabs. The Shortcuts screen must name these known conflicts.
+
 The macOS mappings are proposals, not tested conflict-free bindings; allow the original Control+Shift bindings if the user prefers. Linux shortcuts are suggestions because the desktop/portal may assign or require approval of the final chord. The cross-platform Tauri shell is specified in §5; every actual chord remains subject to OS registration and conflict testing.
 
 ### 11.2 Exact behavior
@@ -603,7 +609,7 @@ The macOS mappings are proposals, not tested conflict-free bindings; allow the o
 - Play/pause toggles an existing session; it never implicitly rereads old clipboard content.
 - Speed shortcuts change the current rate by 0.1 within 0.5–3.0, matching our existing control. They do not resynthesize audio.
 - Skip uses our source-time timeline and existing sentence-snap setting. Keep precise seeking available rather than making snapping mandatory.
-- Outside a reading session, playback-only actions do nothing; they do not open a window or capture text.
+- Outside a reading session, playback-only chords are not registered, so the keys keep their normal meaning in other applications. Registration and release follow session start and end without prompting the user again.
 - Escape is local to the focused player. In a shortcut recorder it cancels recording; in the Chrome picker it cancels picking. Never reserve Escape globally.
 - Ignore auto-repeat for Read selection, Speak clipboard, and Play/pause. Debounce held skip/speed keys to at most four actions per second.
 - Application-global shortcuts and the Chrome long-press picker are separate features. A normal chord must cancel a pending picker hold timer.
@@ -676,6 +682,7 @@ Rules:
 8. Register capture-phase handlers, but acknowledge that a content script cannot guarantee precedence over browser/OS shortcuts or hostile pages.
 9. If Alt release still opens browser chrome on a tested configuration, direct the user to Ctrl or shortcut-only mode; `preventDefault` is not a universal OS-menu guarantee.
 10. A Chrome command also arms the picker for keyboard users and permission-limited mode.
+11. On macOS, the default trigger is long-press Option, with Control and shortcut-only as alternatives. Control+click is a secondary click there. Preserve Command+C/V/L, Command+click, and Command+Tab in place of the Ctrl shortcuts in rule 4.
 
 ### 12.4 Candidate discovery and scope
 
@@ -861,8 +868,9 @@ Errors must remain long enough to act on and be announced accessibly. Do not mak
 6. Start-at-login is a user choice implemented by a tested Tauri/native mechanism on each OS. Background operation stays in the signed-in desktop session, never as a privileged system service.
 7. Store settings, models, cache, and logs in OS user-data directories, respecting Linux XDG paths. The app's code-signing, executable permissions, shared-library loader paths, and worker supervision must be tested per package.
 8. Uninstall removes owned registration and executables; ask whether to retain downloaded models/settings. An update must preserve config and not silently replace an in-use voice.
-9. Before public release, complete signatures/notarization where applicable, extension review, model/runtime license review, and a compatibility matrix for Windows, macOS, Linux X11, and named Wayland environments.
-10. Revalidate store/distribution policies when publishing; this spec does not authorize publishing. [Tauri distribution](https://v2.tauri.app/start/), [Chrome Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)
+9. Private builds are updated manually by installing a newer package. Any automatic updater, such as the Tauri updater with signed update manifests, is a separate decision before public release.
+10. Before public release, complete signatures/notarization where applicable, extension review, model/runtime license review, and a compatibility matrix for Windows, macOS, Linux X11, and named Wayland environments.
+11. Revalidate store/distribution policies when publishing; this spec does not authorize publishing. [Tauri distribution](https://v2.tauri.app/start/), [Chrome Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)
 
 ## 18. Step-by-step delivery plan
 
@@ -911,7 +919,7 @@ Implementation begins only after a separate user instruction. Complete milestone
 - [ ] Spike compact overlay positioning/focus on Windows, macOS, Linux X11, and a named Wayland session.
 - [ ] Add global shortcut registration, conflict/permission feedback, and fallback actions.
 
-**Gate:** the source editor retains typing focus on every supported platform; hotkeys survive 15 minutes idle and sleep/wake where registration is available. Document Wayland limitations.
+**Gate:** the source editor retains typing focus on every supported platform, or the platform restriction is documented with a tested fallback; hotkeys survive 15 minutes idle and sleep/wake where registration is available. Document Wayland limitations.
 
 ### Step 4 — Deliver basic local reading
 
@@ -1083,6 +1091,8 @@ Benchmark procedure: one cold launch plus at least 20 warm starts per chosen con
 ## 22. Decisions to confirm before implementation
 
 These do not prevent using this document as a planning artifact.
+
+**Confirmed on 2026-09-26:** development is authorized. macOS 15 on Apple Silicon is the first build and verification target. English US/UK is the only required language. Playback shortcuts are registered only while a reading session exists (§11.1). Items 1, 2, 4, 5, and 6 below remain open for Windows/Linux, public release, and the browser trigger default.
 
 1. Exact OS releases, CPU architectures, Linux distributions, and Wayland compositors to claim as supported. Cross-platform desktop scope and Tauri stack are set.
 2. Actual CPU/GPU and RAM available for the primary performance target.

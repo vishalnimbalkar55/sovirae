@@ -27,15 +27,16 @@ All sizes are device-independent pixels for desktop and CSS pixels for extension
 | Sidebar | `#F2F1EE` | `#1D1E23` | Navigation |
 | Text primary | `#1A1A1A` | `#F1F0F4` | Main text |
 | Text secondary | `#6B6862` | `#B8B6C2` | Supporting text |
-| Accent | `#7C5CFF` | `#A28BFF` | Selection, waveform, focus |
-| Accent button | `#6242D6` | `#B5A2FF` | Primary button; white/light or dark text as appropriate |
-| Border | `#E5E3DE` | `#3B3D46` | Group separation |
+| Accent | `#7C5CFF` | `#A28BFF` | Selection, waveform, focus rings; not normal-size light-theme text (4.0:1) |
+| Accent button | `#6242D6` | `#B5A2FF` | Primary button and accent-coloured text such as links; white text on light, dark text on dark |
+| Border | `#E5E3DE` | `#3B3D46` | Decorative group separation only |
+| Control border | `#8A867F` | `#737585` | Input, switch, and other control boundaries (≥ 3:1) |
 | Success | `#2E7D5B` | `#7ACBA7` | Successful state |
 | Error | `#B63229` | `#FF9C91` | Error text and icons |
 
 Typography:
 
-- UI: Segoe UI Variable, fallback Segoe UI; extension fallback `system-ui`.
+- UI: the platform system font — `-apple-system`/SF Pro on macOS, Segoe UI Variable then Segoe UI on Windows, and `system-ui` (typically Cantarell, Noto Sans, or Ubuntu) on Linux; extension uses `system-ui`. Verify metrics on each webview; do not bundle a proprietary system font.
 - Reading text: Georgia, fallback serif, user-selectable sans-serif alternative.
 - UI text 14; secondary text 12; section title 20; page title 28; reading text 18 by default.
 - Reading text adjustable 14–28 with 1.55 line height; target 60–75 characters per line.

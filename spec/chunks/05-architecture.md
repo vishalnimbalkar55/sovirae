@@ -33,6 +33,7 @@ workers/speakit-native-host/       Chrome stdio ↔ local IPC executable
 ext/                               MV3 worker, popup, options, picker
 benchmarks/                        Listening corpus and resource reports
 packaging/                         Per-platform app and host registration
+tests/                             Cross-component fixtures and integration tests
 ```
 
 These are future paths. Only `spec/` exists during this planning task. Package each worker binary for the target OS/architecture; model weights are separately downloaded and hash verified. A worker may use a shared Rust crate, but it has its own lifecycle and message boundary.
