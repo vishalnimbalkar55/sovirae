@@ -276,9 +276,10 @@ pub fn display_binding(binding: &str) -> String {
 }
 
 #[tauri::command]
-pub fn player_expand(app: AppHandle, expanded: bool) {
+pub fn player_expand(app: AppHandle, state: State<'_, AppState>, expanded: bool) {
     if let Some(w) = app.get_webview_window("player") {
-        let (width, height) = if expanded { (620.0, 500.0) } else { (520.0, 112.0) };
+        let collapsed = state.settings.lock().unwrap().player_height();
+        let (width, height) = if expanded { (620.0, 500.0) } else { (520.0, collapsed) };
         let _ = w.set_resizable(expanded);
         let _ = w.set_size(tauri::LogicalSize::new(width, height));
         crate::platform::set_player_keyable(&w, expanded);

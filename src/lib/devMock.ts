@@ -16,6 +16,7 @@ export function installDevMock() {
     theme: params.get("theme") ?? "system", readingFontSize: 18, readingFont: "serif", rate: 1.2, volume: 0.8,
     voice: "Samantha" as string | null, resourceProfile: "balanced", startAtLogin: false, keepRunning: true, startMinimized: false,
     hotkeysPaused: false, sentenceSnap: false, followReading: true, playerTopmost: true,
+    playerLine: params.get("line") ?? "wave",
     chromeBridge: true, pairedExtensions: [] as string[], matchPageLanguage: true,
   };
   const segments: [number, number, number, number, boolean][] = [];
@@ -133,4 +134,43 @@ export function installDevMock() {
   if (state === "notice") {
     setTimeout(() => emit("notice", { code: "NO_TEXT", message: "Clipboard is empty. Copy some text and try again.", action: null }), 50);
   }
+  if (state === "playing" && location.pathname.endsWith("player.html")) setTimeout(() => simulatePlayback(segments, snapshot), 300);
+}
+
+/** Speech-like envelopes and a moving position, so player styles can be reviewed live. */
+function simulatePlayback(segments: [number, number, number, number, boolean][], snapshot: { positionMs: number; durationMs: number; durationIsFinal: boolean; segmentId: number | null; sentenceId: number | null; rate: number }) {
+  let seed = 11;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const bytes = new TextEncoder().encode(SAMPLE);
+  const dec = new TextDecoder();
+  let t = 0;
+  const spans = segments.map(([id, , start, end]) => {
+    const levels: number[] = [];
+    for (const word of dec.decode(bytes.subarray(start, end)).split(/\s+/)) {
+      const letters = word.replace(/[^a-z]/gi, "").length;
+      const frames = Math.round((110 + 56 * letters) / 20);
+      const syl = Math.max(1, Math.round(letters / 3));
+      const loud = 0.55 + 0.45 * rand();
+      for (let i = 0; i < frames; i++) {
+        const ph = i / frames;
+        levels.push(Math.round(255 * Math.min(1, loud * Math.pow(Math.sin(Math.PI * ((ph * syl) % 1)), 0.7) + 0.05 * rand())));
+      }
+      const gap = /[.!?]$/.test(word) ? 16 : /,$/.test(word) ? 10 : 3;
+      for (let i = 0; i < gap; i++) levels.push(Math.round(6 * rand()));
+    }
+    const span = { id, start: t, durationMs: levels.length * 20, levels };
+    t += span.durationMs;
+    return span;
+  });
+  snapshot.durationMs = t;
+  snapshot.durationIsFinal = true;
+  snapshot.positionMs = 2000;
+  for (const s of spans) emit("envelope", { sessionId: 3, segment: s.id, durationMs: s.durationMs, levels: s.levels });
+  setInterval(() => {
+    snapshot.positionMs = (snapshot.positionMs + 250 * snapshot.rate) % t;
+    const cur = spans.find((s) => snapshot.positionMs < s.start + s.durationMs) ?? spans[0];
+    snapshot.segmentId = cur.id;
+    snapshot.sentenceId = segments[cur.id][1];
+    emit("playback", { ...snapshot });
+  }, 250);
 }

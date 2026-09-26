@@ -90,6 +90,34 @@ html.player-root, html.player-root body { background: transparent; overflow: hid
 }
 .wave:has(.wave-input:focus-visible) { outline: 2px solid var(--violet); outline-offset: 2px; border-radius: 4px; }
 
+/* Player line styles other than the waveform (lines.tsx) */
+.seek-zone { position: relative; height: 10px; display: flex; align-items: center; cursor: pointer; }
+.seek-zone:has(.wave-input:focus-visible) { outline: 2px solid var(--violet); outline-offset: 2px; border-radius: 4px; }
+.hair { flex: 1; height: 2px; border-radius: 2px; background: var(--track); overflow: hidden; }
+.hair i { display: block; height: 100%; background: var(--wave-played); }
+
+.line-ticker { flex: none; height: 38px; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.ticker-mask {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 90%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 90%, transparent);
+}
+.ticker-text { display: flex; gap: 4px; white-space: nowrap; font-size: 13.5px; font-weight: 500; transition: transform 260ms var(--ease); will-change: transform; }
+.tw { flex: none; padding: 1px 3px; border-radius: 5px; color: var(--ink-3); cursor: pointer; transition: color var(--t-fast), background var(--t-fast); }
+.tw.done { color: var(--ink); }
+.tw.now { color: var(--action); background: var(--violet-soft); }
+
+.line-steps { flex: none; height: 38px; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.steps-caption { display: flex; align-items: baseline; gap: 10px; font-size: 12.5px; min-width: 0; }
+.steps-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
+.steps-text b { color: var(--ink); font-weight: 650; }
+.steps-count { flex: none; font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.steps-track { flex: 1; display: flex; gap: 3px; height: 4px; }
+.step { flex-basis: 0; min-width: 3px; height: 100%; border-radius: 2px; background: var(--track); overflow: hidden; }
+.step i { display: block; height: 100%; background: var(--wave-played); }
+
+@media (prefers-reduced-motion: reduce) { .ticker-text { transition: none; } }
+
 .p-notice { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 13px; padding: 0 2px; }
 .p-notice span { flex: 1; }
 .p-message { margin: 0; font-size: 12px; color: var(--error); }

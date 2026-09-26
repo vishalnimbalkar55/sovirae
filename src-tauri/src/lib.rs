@@ -104,7 +104,8 @@ pub(crate) fn hide_player<R: Runtime>(app: &AppHandle<R>) {
     if let Some(w) = app.get_webview_window("player") {
         let _ = w.hide();
         let _ = app.emit("player-collapse", ());
-        let _ = w.set_size(tauri::LogicalSize::new(520.0, 112.0));
+        let height = app.try_state::<AppState>().map_or(112.0, |s| s.settings.lock().unwrap().player_height());
+        let _ = w.set_size(tauri::LogicalSize::new(520.0, height));
         platform::set_player_keyable(&w, false);
     }
     if let Some(state) = app.try_state::<AppState>() {

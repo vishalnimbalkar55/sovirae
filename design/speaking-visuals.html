@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Speaking visuals</title>
+<style>
+  :root {
+    --canvas: #f7f6f3; --surface: #ffffff; --ink: #1a1a1a; --ink-2: #6b6862; --ink-3: #8f8b84;
+    --violet: #7c5cff; --action: #6242d6; --on-action: #ffffff;
+    --hairline: rgba(38,32,20,.09); --hairline-strong: rgba(38,32,20,.14);
+    --fill: rgba(38,32,20,.05); --violet-soft: rgba(124,92,255,.1); --track: #e2dfd8;
+    --wave-dim: rgba(107,104,98,.24); --wave-played: #7c5cff; --wave-ahead: rgba(124,92,255,.34);
+    --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --font-read: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas: #17181c; --surface: #222329; --ink: #f1f0f4; --ink-2: #b8b6c2; --ink-3: #85838f;
+      --violet: #a28bff; --action: #b5a2ff; --on-action: #17181c;
+      --hairline: rgba(255,255,255,.07); --hairline-strong: rgba(255,255,255,.11);
+      --fill: rgba(255,255,255,.05); --violet-soft: rgba(162,139,255,.14); --track: #3a3b44;
+      --wave-dim: rgba(184,182,194,.2); --wave-played: #a28bff; --wave-ahead: rgba(162,139,255,.38);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --canvas: #17181c; --surface: #222329; --ink: #f1f0f4; --ink-2: #b8b6c2; --ink-3: #85838f;
+    --violet: #a28bff; --action: #b5a2ff; --on-action: #17181c;
+    --hairline: rgba(255,255,255,.07); --hairline-strong: rgba(255,255,255,.11);
+    --fill: rgba(255,255,255,.05); --violet-soft: rgba(162,139,255,.14); --track: #3a3b44;
+    --wave-dim: rgba(184,182,194,.2); --wave-played: #a28bff; --wave-ahead: rgba(162,139,255,.38);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--canvas); color: var(--ink); font: 14px/1.5 var(--font-ui); -webkit-font-smoothing: antialiased; }
+  main { max-width: 1140px; margin: 0 auto; padding: 40px 24px 80px; }
+  header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px 32px; margin-bottom: 32px; }
+  h1 { margin: 0 0 4px; font-size: 26px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; }
+  .lead { margin: 0; color: var(--ink-2); max-width: 60ch; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .seg { display: inline-flex; padding: 2px; border-radius: 10px; background: var(--fill); }
+  .seg button, .tb { all: unset; box-sizing: border-box; height: 30px; padding: 0 12px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; color: var(--ink-2); display: inline-flex; align-items: center; }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .tb { background: var(--action); color: var(--on-action); min-width: 76px; justify-content: center; }
+  .seg button:focus-visible, .tb:focus-visible, .vis:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 40px 36px; }
+  .ref { margin-bottom: 44px; padding-bottom: 36px; border-bottom: 1px solid var(--hairline-strong); }
+  .variant h2 { margin: 14px 0 2px; font-size: 15px; font-weight: 650; display: flex; gap: 8px; align-items: baseline; }
+  .variant h2 .n { color: var(--action); font-variant-numeric: tabular-nums; min-width: 1.4em; }
+  .variant p { margin: 0; color: var(--ink-2); max-width: 58ch; }
+  .variant .fit { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+
+  /* Player mock, matching src/player/player.css */
+  .player { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 3px; padding: 7px 12px 8px; background: var(--surface);
+    border-radius: 14px; box-shadow: inset 0 0 0 1px var(--hairline-strong), 0 12px 32px -14px rgba(38,32,20,.25); user-select: none; }
+  .p-head { display: flex; align-items: center; gap: 8px; min-height: 26px; font-size: 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px 0 6px; border-radius: 999px; background: var(--violet-soft); font-weight: 600; white-space: nowrap; }
+  .chip svg { width: 14px; height: 14px; color: var(--violet); }
+  .meta { color: var(--ink-2); white-space: nowrap; }
+  .spacer { flex: 1; }
+  .ib { width: 26px; height: 26px; display: inline-grid; place-items: center; color: var(--ink-2); border-radius: 8px; }
+  .ib svg { width: 15px; height: 15px; }
+  .p-controls { display: flex; align-items: center; gap: 2px; min-height: 36px; }
+  .cb { width: 32px; height: 32px; display: inline-grid; place-items: center; color: var(--ink); }
+  .cb svg { width: 18px; height: 18px; }
+  .play { width: 36px; height: 36px; border-radius: 50%; background: var(--action); color: var(--on-action); display: inline-grid; place-items: center; margin: 0 3px; }
+  .play svg { width: 16px; height: 16px; }
+  .rate { margin-left: 8px; height: 26px; padding: 0 10px; border-radius: 8px; background: var(--fill); font-size: 12.5px; font-weight: 650; display: inline-flex; align-items: center; }
+  .time { font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .time span { font-weight: 400; color: var(--ink-2); }
+
+  .vis { position: relative; cursor: pointer; border-radius: 4px; }
+  .vis canvas { display: block; width: 100%; height: 100%; }
+
+  /* 4: word ticker */
+  .ticker { height: 36px; display: flex; flex-direction: column; justify-content: center; gap: 7px; }
+  .ticker .mask { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 88%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 88%, transparent); }
+  .ticker .line { white-space: nowrap; font-size: 14px; font-weight: 500; transition: transform 260ms cubic-bezier(.2,.7,.2,1); will-change: transform; }
+  .ticker .w { color: var(--ink-3); padding: 1px 3px; margin: 0 -1px; border-radius: 5px; transition: color 120ms, background 120ms; }
+  .ticker .w.done { color: var(--ink); }
+  .ticker .w.now { color: var(--action); background: var(--violet-soft); }
+  .hair { height: 2px; border-radius: 2px; background: var(--track); overflow: hidden; }
+  .hair i { display: block; height: 100%; width: 0; background: var(--violet); }
+
+  /* 5: sentence steps */
+  .steps { display: flex; flex-direction: column; gap: 6px; padding-top: 2px; }
+  .steps .cap { display: flex; gap: 10px; align-items: baseline; font-size: 12.5px; }
+  .steps .cap .txt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
+  .steps .cap .txt b { color: var(--ink); font-weight: 650; }
+  .steps .cap .cnt { color: var(--ink-3); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+
+  /* 10: serif caption */
+  .caption { padding: 4px 2px 2px; font-family: var(--font-read); }
+  .caption .prev { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+  .caption .cur { font-size: 15px; line-height: 1.45; min-height: 2.9em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .caption .w { color: var(--ink-3); }
+  .caption .w.done { color: var(--ink); }
+  .caption .w.now { background-image: linear-gradient(90deg, var(--ink) var(--f, 0%), var(--ink-3) var(--f, 0%)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .caption .hair { margin-top: 5px; }
+
+  footer { margin-top: 56px; color: var(--ink-2); font-size: 13px; }
+  @media (prefers-reduced-motion: reduce) { .ticker .line { transition: none; } }
+  @media (max-width: 560px) { main { padding: 28px 16px 64px; } .meta.dev { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div>
+      <h1>Speaking visuals</h1>
+      <p class="lead">Round 1 of 2: ten ideas for the line under the player controls. Every player below reads the same sample, so you can compare them side by side. Click a line or a word to jump there.</p>
+    </div>
+    <div class="toolbar">
+      <button class="tb" id="toggle">Pause</button>
+      <div class="seg" role="group" aria-label="Speed">
+        <button data-speed="1" aria-pressed="true">1×</button><button data-speed="1.5" aria-pressed="false">1.5×</button>
+      </div>
+      <div class="seg" role="group" aria-label="Theme">
+        <button data-theme="auto" aria-pressed="true">Auto</button><button data-theme="light" aria-pressed="false">Light</button><button data-theme="dark" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="ref" id="ref"></section>
+  <section class="grid" id="grid"></section>
+  <footer>Tell me the numbers you like (for example “4 and 8”). Round 2 will explore ten more around your picks.</footer>
+</main>
+
+<script>
+(() => {
+  // ---- Sample reading: words with speech-like timing and a 50 Hz level envelope ----
+  const TEXT = 'Tides are the slow breathing of the sea. Twice a day the water climbs the beach, then slips back to show the sand. The moon does most of the pulling, and the sun helps a little. When they line up, the tides run higher than usual. Sailors once kept tide tables beside their charts. Today a phone can tell you the time of the next high water. Still, standing at the edge and watching it turn is the best way to learn it.';
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const HZ = 50, STEP = 1000 / HZ;
+  const words = [], sentences = [];
+  let t = 400;
+  TEXT.split(/(?<=[.!?])\s+/).forEach((st, si) => {
+    const s = { start: t, words: [], text: st };
+    st.split(' ').forEach((raw) => {
+      const letters = raw.replace(/[^a-z']/gi, '').length;
+      const dur = 110 + 56 * letters;
+      const w = { text: raw, s: si, start: t, end: t + dur, loud: 0.55 + 0.45 * rand(), syl: Math.max(1, Math.round(letters / 3)) };
+      s.words.push(words.length);
+      words.push(w);
+      t = w.end + (/[.!?]$/.test(raw) ? 460 : /,$/.test(raw) ? 220 : 70);
+    });
+    s.end = words[words.length - 1].end;
+    sentences.push(s);
+  });
+  const D = t + 300;
+  const levels = new Float32Array(Math.ceil(D / STEP));
+  for (const w of words) {
+    for (let i = Math.floor(w.start / STEP); i < Math.ceil(w.end / STEP); i++) {
+      const ph = (i * STEP - w.start) / (w.end - w.start);
+      const syl = (ph * w.syl) % 1;
+      const hump = Math.pow(Math.sin(Math.PI * syl), 0.7) * (0.75 + 0.25 * Math.sin(Math.PI * ph));
+      levels[i] = Math.min(1, w.loud * hump + 0.05 * rand());
+    }
+  }
+  for (let i = 0; i < levels.length; i++) if (!levels[i]) levels[i] = 0.02 * rand();
+
+  const levelAt = (ms) => levels[Math.max(0, Math.min(levels.length - 1, Math.floor(ms / STEP)))];
+  const live = (ms) => Math.max(levelAt(ms - 20), levelAt(ms), levelAt(ms + 20));
+  const binCache = new Map();
+  function bins(n) {
+    if (binCache.has(n)) return binCache.get(n);
+    const out = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const a = Math.floor((i / n) * levels.length), b = Math.max(a + 1, Math.floor(((i + 1) / n) * levels.length));
+      let m = 0;
+      for (let j = a; j < b; j++) m = Math.max(m, levels[j]);
+      out[i] = m;
+    }
+    binCache.set(n, out);
+    return out;
+  }
+  /** Smoothed loudness per column: an average, so shapes stay calm instead of hitting the ceiling. */
+  const avgCache = new Map();
+  function avgBins(n) {
+    if (avgCache.has(n)) return avgCache.get(n);
+    const out = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const a = Math.floor((i / n) * levels.length), b = Math.max(a + 1, Math.floor(((i + 1) / n) * levels.length));
+      let sum = 0;
+      for (let j = a; j < b; j++) sum += levels[j];
+      out[i] = Math.min(1, (sum / (b - a)) * 1.5);
+    }
+    avgCache.set(n, out);
+    return out;
+  }
+  function wordAt(ms) {
+    let lo = 0, hi = words.length - 1, best = -1;
+    while (lo <= hi) { const mid = (lo + hi) >> 1; if (words[mid].start <= ms) { best = mid; lo = mid + 1; } else hi = mid - 1; }
+    return best;
+  }
+  const sentenceAt = (ms) => { const w = wordAt(ms); return w < 0 ? 0 : words[w].s; };
+  const fmt = (ms) => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+  // ---- Colours from tokens -----------------------------------------------------
+  let C = {};
+  function readColors() {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of ['violet', 'action', 'ink', 'ink-2', 'ink-3', 'track', 'surface', 'wave-dim', 'wave-played', 'wave-ahead', 'violet-soft']) C[k] = cs.getPropertyValue('--' + k).trim();
+  }
+
+  // ---- Canvas helper -------------------------------------------------------------
+  function fit(canvas) {
+    const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return { ctx, w, h };
+  }
+  const pill = (ctx, x, y, w, h) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, Math.min(w, h) / 2); ctx.fill(); };
+
+  // ---- Variants ------------------------------------------------------------------
+  function canvasVis(height, draw) {
+    return (vis) => {
+      vis.style.height = height + 'px';
+      const c = document.createElement('canvas');
+      vis.appendChild(c);
+      vis.addEventListener('click', (e) => seek((e.offsetX / vis.clientWidth) * D));
+      return (pos, now) => draw(fit(c), pos, now);
+    };
+  }
+
+  const REFERENCE = {
+    name: 'Current design', desc: 'What the player shows today: thin bars for the whole reading, a 2 px playhead.', player: 112,
+    build: canvasVis(24, ({ ctx, w, h }, pos) => {
+      const BAR = 3, GAP = 2, n = Math.floor((w + GAP) / (BAR + GAP)), b = bins(n), mid = h / 2;
+      for (let i = 0; i < n; i++) {
+        const bh = Math.max(3, b[i] * (h - 2));
+        ctx.fillStyle = ((i + 0.5) / n) * D <= pos ? C['wave-played'] : C['wave-ahead'];
+        ctx.beginPath(); ctx.roundRect(i * (BAR + GAP), mid - bh / 2, BAR, bh, 1.5); ctx.fill();
+      }
+      ctx.fillStyle = C['wave-played'];
+      ctx.fillRect(Math.min(Math.max((pos / D) * w - 1, 0), w - 2), 1, 2, h - 2);
+    }),
+  };
+
+  const VARIANTS = [
+    {
+      name: 'Capsules', desc: 'Fewer, rounder bars that read as syllables. The bar being spoken grows with the voice and glows; no playhead line needed.', player: 116,
+      build: canvasVis(28, ({ ctx, w, h }, pos) => {
+        const BAR = 4, GAP = 3, n = Math.floor((w + GAP) / (BAR + GAP)), b = bins(n), mid = h / 2;
+        const cur = Math.min(n - 1, Math.floor((pos / D) * n));
+        for (let i = 0; i < n; i++) {
+          let lv = b[i], color = i < cur ? C['wave-played'] : C['wave-ahead'];
+          if (i === cur) { lv = Math.max(0.35, live(pos)); color = C.violet; ctx.shadowColor = C.violet; ctx.shadowBlur = 10; }
+          ctx.fillStyle = color;
+          pill(ctx, i * (BAR + GAP), mid - Math.max(4, lv * (h - 2)) / 2, BAR, Math.max(4, lv * (h - 2)));
+          ctx.shadowBlur = 0;
+        }
+      }),
+    },
+    {
+      name: 'Ink ribbon', desc: 'One smooth, mirrored shape instead of bars, like a voice memo. Calmer and more organic; the played part fills in solid.', player: 112,
+      build: canvasVis(26, ({ ctx, w, h }, pos) => {
+        const n = Math.max(2, Math.floor(w / 4)), b = avgBins(n), mid = h / 2, amp = h / 2 - 2;
+        const path = new Path2D();
+        const y = (i, sgn) => mid + sgn * Math.max(0.8, Math.pow(b[i], 0.85) * amp);
+        path.moveTo(0, mid);
+        for (let i = 0; i < n; i++) { const x = (i + 0.5) * (w / n), xn = (i + 1.5) * (w / n); path.quadraticCurveTo(x, y(i, -1), i + 1 < n ? (x + xn) / 2 : w, i + 1 < n ? (y(i, -1) + y(i + 1, -1)) / 2 : mid); }
+        for (let i = n - 1; i >= 0; i--) { const x = (i + 0.5) * (w / n), xp = (i - 0.5) * (w / n); path.quadraticCurveTo(x, y(i, 1), i > 0 ? (x + xp) / 2 : 0, i > 0 ? (y(i, 1) + y(i - 1, 1)) / 2 : mid); }
+        path.closePath();
+        const px = (pos / D) * w;
+        ctx.fillStyle = C['wave-ahead']; ctx.fill(path);
+        ctx.save(); ctx.beginPath(); ctx.rect(0, 0, px, h); ctx.clip(); ctx.fillStyle = C.violet; ctx.fill(path); ctx.restore();
+        ctx.fillStyle = C.ink; ctx.fillRect(px - 0.75, 0, 1.5, h);
+      }),
+    },
+    {
+      name: 'Scrolling voice', desc: 'The line moves, the playhead stays in the middle. You see the last few seconds and what comes next, like a live recording.', player: 116,
+      build: canvasVis(28, ({ ctx, w, h }, pos) => {
+        const WIN = 7000, BAR = 3, GAP = 2, mid = h / 2, cx = w / 2, pitch = BAR + GAP, msPerPx = WIN / w;
+        const offset = (pos / msPerPx) % pitch;
+        for (let x = -offset; x < w; x += pitch) {
+          const tt = pos + (x + BAR / 2 - cx) * msPerPx;
+          if (tt < 0 || tt > D) continue;
+          const lv = Math.max(levelAt(tt), levelAt(tt + 40));
+          ctx.fillStyle = tt <= pos ? C.violet : C['wave-dim'];
+          pill(ctx, x, mid - Math.max(3, lv * (h - 2)) / 2, BAR, Math.max(3, lv * (h - 2)));
+        }
+        ctx.globalCompositeOperation = 'destination-in';
+        const g = ctx.createLinearGradient(0, 0, w, 0);
+        g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.18, '#000'); g.addColorStop(0.82, '#000'); g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = C.ink; pill(ctx, cx - 1, 0, 2, h);
+      }),
+    },
+    {
+      name: 'Word ticker', desc: 'The sentence being read, one line, sliding along. The spoken word is marked; read words stay dark, upcoming ones stay light. A hairline shows overall progress.', player: 124, fit: 'Needs the player 12 px taller.',
+      build: (vis) => {
+        vis.className += ' ticker';
+        vis.innerHTML = '<div class="mask"><div class="line"></div></div><div class="hair"><i></i></div>';
+        const mask = vis.querySelector('.mask'), line = vis.querySelector('.line'), bar = vis.querySelector('.hair i');
+        let shown = -1, spans = [];
+        line.addEventListener('click', (e) => { const i = e.target.dataset?.w; if (i != null) seek(words[+i].start); });
+        vis.querySelector('.hair').addEventListener('click', (e) => seek((e.offsetX / e.currentTarget.clientWidth) * D));
+        return (pos) => {
+          const si = sentenceAt(pos), wi = wordAt(pos);
+          if (si !== shown) {
+            shown = si;
+            line.innerHTML = sentences[si].words.map((i) => `<span class="w" data-w="${i}">${words[i].text}</span>`).join(' ');
+            spans = [...line.children];
+          }
+          let target = null;
+          for (const s of spans) { const i = +s.dataset.w; s.className = 'w' + (i < wi ? ' done' : i === wi && pos < words[i].end + 60 ? ' now' : ''); if (i === wi) target = s; }
+          if (target) line.style.transform = `translateX(${Math.max(Math.min(0, mask.clientWidth - line.scrollWidth - 8), Math.min(0, mask.clientWidth * 0.36 - target.offsetLeft))}px)`;
+          bar.style.width = (pos / D) * 100 + '%';
+        };
+      },
+    },
+    {
+      name: 'Sentence steps', desc: 'Progress split into one segment per sentence, like story bars. Above it, the current sentence with the spoken word in bold, and where you are in the text.', player: 124, fit: 'Needs the player 12 px taller.',
+      build: (vis) => {
+        vis.className += ' steps';
+        vis.innerHTML = '<div class="cap"><span class="txt"></span><span class="cnt"></span></div><canvas style="height:6px"></canvas>';
+        const txt = vis.querySelector('.txt'), cnt = vis.querySelector('.cnt'), c = vis.querySelector('canvas');
+        c.addEventListener('click', (e) => seek((e.offsetX / c.clientWidth) * D));
+        let key = '';
+        return (pos) => {
+          const si = sentenceAt(pos), wi = wordAt(pos);
+          if (key !== si + ':' + wi) {
+            key = si + ':' + wi;
+            txt.innerHTML = sentences[si].words.map((i) => (i === wi ? `<b>${words[i].text}</b>` : words[i].text)).join(' ');
+            cnt.textContent = `${si + 1} of ${sentences.length}`;
+          }
+          const { ctx, w, h } = fit(c), GAP = 3, usable = w - GAP * (sentences.length - 1);
+          let x = 0;
+          sentences.forEach((s, i) => {
+            const next = sentences[i + 1]?.start ?? D, sw = ((next - s.start) / D) * usable + (i === 0 ? (s.start / D) * usable : 0);
+            ctx.fillStyle = C.track; pill(ctx, x, 1, sw, h - 2);
+            const f = i < si ? 1 : i > si ? 0 : Math.min(1, (pos - (i === 0 ? 0 : s.start)) / ((next - (i === 0 ? 0 : s.start)) || 1));
+            if (f > 0) { ctx.fillStyle = C.violet; pill(ctx, x, 1, Math.max(h - 2, sw * f), h - 2); }
+            x += sw + GAP;
+          });
+        };
+      },
+    },
+    {
+      name: 'Word dots', desc: 'Each dot is one word; its size is how loud it is. The word being spoken swells with the voice and gets a ring, so the rhythm of speech is visible.', player: 112,
+      build: canvasVis(24, ({ ctx, w, h }, pos) => {
+        const mid = h / 2, wi = wordAt(pos), pitch = w / words.length;
+        words.forEach((wd, i) => {
+          const x = (i + 0.5) * pitch;
+          if (i === wi && pos < wd.end + 80) {
+            const r = 2.5 + live(pos) * 5;
+            ctx.strokeStyle = C.violet; ctx.globalAlpha = 0.35; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(x, mid, r + 3, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+            ctx.fillStyle = C.violet; ctx.beginPath(); ctx.arc(x, mid, r, 0, Math.PI * 2); ctx.fill();
+            return;
+          }
+          ctx.fillStyle = i < wi || (i === wi) ? C.violet : C['wave-ahead'];
+          ctx.beginPath(); ctx.arc(x, mid, Math.min(pitch * 0.42, 1.2 + wd.loud * 1.3), 0, Math.PI * 2); ctx.fill();
+        });
+      }),
+    },
+    {
+      name: 'Live meter', desc: 'A small equalizer that moves with the voice, beside a plain progress track with a knob. Quiet and familiar; the motion only lives in a small spot.', player: 112,
+      build: canvasVis(24, ({ ctx, w, h }, pos, now) => {
+        const mid = h / 2, BARS = 5, bw = 3, gap = 2.5, profile = [0.55, 0.85, 1, 0.8, 0.6];
+        for (let i = 0; i < BARS; i++) {
+          const lv = Math.max(0.12, live(pos - i * 45) * profile[i]);
+          ctx.fillStyle = C.violet; pill(ctx, i * (bw + gap), mid - (lv * (h - 4)) / 2, bw, lv * (h - 4));
+        }
+        const x0 = BARS * (bw + gap) + 10, tw = w - x0 - 6, px = x0 + (pos / D) * tw;
+        ctx.fillStyle = C.track; pill(ctx, x0, mid - 2, tw, 4);
+        ctx.fillStyle = C.violet; pill(ctx, x0, mid - 2, Math.max(4, px - x0), 4);
+        ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 3; ctx.shadowOffsetY = 1;
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(px, mid, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+        ctx.fillStyle = C.violet; ctx.beginPath(); ctx.arc(px, mid, 2.5, 0, Math.PI * 2); ctx.fill();
+      }),
+    },
+    {
+      name: 'Breathing line', desc: 'A single thin line. Only the point being spoken ripples, like a string vibrating with the voice. Minimal, and still clearly alive.', player: 112,
+      build: canvasVis(26, ({ ctx, w, h }, pos, now) => {
+        const mid = h / 2, px = (pos / D) * w, lv = live(pos);
+        const yAt = (x) => mid + lv * (h / 2 - 2) * Math.exp(-(((x - px) / 26) ** 2)) * Math.sin((x - px) * 0.42 - now * 0.018);
+        ctx.lineWidth = 2; ctx.lineCap = 'round';
+        for (const [a, b, color] of [[px, w, C.track], [0, px, C.violet]]) {
+          ctx.strokeStyle = color; ctx.beginPath();
+          for (let x = a; x <= b; x += 1) (x === a ? ctx.moveTo(x, yAt(x)) : ctx.lineTo(x, yAt(x)));
+          ctx.stroke();
+        }
+        ctx.fillStyle = C.violet; ctx.beginPath(); ctx.arc(px, yAt(px), 3, 0, Math.PI * 2); ctx.fill();
+      }),
+    },
+    {
+      name: 'Voiceprint', desc: 'The whole reading as a fine barcode: darker where the voice is louder, pale in pauses. Sentence breaks show as clear gaps; a bright column marks now.', player: 112,
+      build: canvasVis(24, ({ ctx, w, h }, pos) => {
+        const COL = 2, n = Math.floor(w / COL), b = bins(n), cur = Math.floor((pos / D) * n);
+        for (let i = 0; i < n; i++) {
+          const a = Math.pow(b[i], 0.8);
+          ctx.globalAlpha = i <= cur ? 0.12 + 0.88 * a : 0.08 + 0.4 * a;
+          ctx.fillStyle = i <= cur ? C.violet : C['ink-3'];
+          ctx.fillRect(i * COL, 2, COL - 0.5, h - 4);
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = C.ink; pill(ctx, cur * COL - 1, 0, 3, h);
+      }),
+    },
+    {
+      name: 'Reading caption', desc: 'Subtitles for your ears: the current sentence in the reading font, inked in as it is spoken, with the previous sentence faded above. Best when you want to follow along.', player: 168, fit: 'Needs the player 56 px taller.',
+      build: (vis) => {
+        vis.className += ' caption';
+        vis.innerHTML = '<div class="prev"></div><div class="cur"></div><div class="hair"><i></i></div>';
+        const prev = vis.querySelector('.prev'), cur = vis.querySelector('.cur'), bar = vis.querySelector('.hair i');
+        cur.addEventListener('click', (e) => { const i = e.target.dataset?.w; if (i != null) seek(words[+i].start); });
+        vis.querySelector('.hair').addEventListener('click', (e) => seek((e.offsetX / e.currentTarget.clientWidth) * D));
+        let shown = -1, spans = [];
+        return (pos) => {
+          const si = sentenceAt(pos), wi = wordAt(pos);
+          if (si !== shown) {
+            shown = si;
+            prev.textContent = si > 0 ? sentences[si - 1].text : '';
+            cur.innerHTML = sentences[si].words.map((i) => `<span class="w" data-w="${i}">${words[i].text}</span>`).join(' ');
+            spans = [...cur.children];
+          }
+          for (const s of spans) {
+            const i = +s.dataset.w, wd = words[i];
+            if (i < wi || (i === wi && pos >= wd.end)) s.className = 'w done';
+            else if (i === wi) { s.className = 'w now'; s.style.setProperty('--f', ((pos - wd.start) / (wd.end - wd.start)) * 100 + '%'); }
+            else s.className = 'w';
+          }
+          bar.style.width = (pos / D) * 100 + '%';
+        };
+      },
+    },
+  ];
+
+  // ---- Player mock ----------------------------------------------------------------
+  const ICON = {
+    mark: '<svg viewBox="0 0 24 24" fill="none"><path d="M15.5 3.5v3.2c0 1-.9 1.6-3 1.6-2.4 0-4.8.9-4.8 3.3 0 2.2 2 2.8 4.3 3.3 2.4.5 4.5 1.3 4.5 3.5 0 2.3-2.2 3.3-4.7 3.3-2 0-3.6-.6-4.6-1.7" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4"/></svg>',
+    fwd: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4"/></svg>',
+    pause: '<svg viewBox="0 0 24 24"><rect x="6.5" y="5.5" width="3.8" height="13" rx="1" fill="currentColor"/><rect x="13.7" y="5.5" width="3.8" height="13" rx="1" fill="currentColor"/></svg>',
+    play: '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>',
+  };
+  const draws = [];
+  function mount(parent, v, n) {
+    const art = document.createElement('article');
+    art.className = 'variant';
+    art.innerHTML = `<div class="player" style="height:${v.player}px">
+        <div class="p-head"><span class="chip">${ICON.mark}Chrome</span><span class="meta">Heart</span><span class="meta dev">MacBook Pro Speakers</span><span class="spacer"></span><span class="ib">${ICON.expand}</span><span class="ib">${ICON.close}</span></div>
+        <div class="p-controls"><span class="cb">${ICON.back}</span><span class="play"></span><span class="cb">${ICON.fwd}</span><span class="rate">1×</span><span class="spacer"></span><span class="time"></span></div>
+        <div class="vis"></div>
+      </div>
+      <h2>${n ? `<span class="n">${n}</span>` : ''}${v.name}</h2><p>${v.desc}</p>${v.fit ? `<p class="fit">${v.fit}</p>` : ''}`;
+    parent.appendChild(art);
+    const draw = v.build(art.querySelector('.vis'));
+    const time = art.querySelector('.time'), play = art.querySelector('.play');
+    play.addEventListener('click', togglePlay);
+    let lastSec = -1, lastPlaying = null;
+    draws.push((pos, now) => {
+      draw(pos, now);
+      const sec = Math.floor(pos / 1000);
+      if (sec !== lastSec) { lastSec = sec; time.innerHTML = `${fmt(pos)}<span> / ${fmt(D)}</span>`; }
+      if (lastPlaying !== playing) { lastPlaying = playing; play.innerHTML = playing ? ICON.pause : ICON.play; }
+    });
+  }
+  mount(document.getElementById('ref'), REFERENCE, 0);
+  VARIANTS.forEach((v, i) => mount(document.getElementById('grid'), v, i + 1));
+
+  // ---- Clock -------------------------------------------------------------------------
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let pos = 2600, playing = !reduce, speed = 1, last = performance.now();
+  function seek(ms) { pos = Math.max(0, Math.min(D - 1, ms)); frame(performance.now(), true); }
+  function togglePlay() { playing = !playing; document.getElementById('toggle').textContent = playing ? 'Pause' : 'Play'; last = performance.now(); frame(last, true); }
+  function frame(now, once) {
+    if (playing && !once) pos = (pos + (now - last) * speed) % D;
+    if (!once) last = now;
+    for (const d of draws) d(pos, now);
+  }
+  function loop(now) { frame(now); requestAnimationFrame(loop); }
+  document.getElementById('toggle').textContent = playing ? 'Pause' : 'Play';
+  document.getElementById('toggle').addEventListener('click', togglePlay);
+  document.querySelectorAll('[data-speed]').forEach((b) => b.addEventListener('click', () => {
+    speed = +b.dataset.speed;
+    document.querySelectorAll('[data-speed]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    document.querySelectorAll('.rate').forEach((r) => (r.textContent = b.textContent));
+  }));
+  document.querySelectorAll('[data-theme]').forEach((b) => b.addEventListener('click', () => {
+    const th = b.dataset.theme;
+    if (th === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = th;
+    document.querySelectorAll('[data-theme]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    readColors(); frame(performance.now(), true);
+  }));
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readColors(); frame(performance.now(), true); });
+  addEventListener('resize', () => frame(performance.now(), true));
+  readColors();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

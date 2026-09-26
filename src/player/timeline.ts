@@ -50,3 +50,72 @@ export function levelAt(timeline: Span[], ms: number, hz = 50): number | null {
   }
   return null;
 }
+
+/** Index of the span playing at a source time, or -1. */
+export function spanIndexAt(timeline: Span[], ms: number): number {
+  let lo = 0;
+  let hi = timeline.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const s = timeline[mid];
+    if (ms < s.startMs) hi = mid - 1;
+    else if (ms >= s.startMs + s.durationMs) lo = mid + 1;
+    else return mid;
+  }
+  return ms >= 0 && timeline.length ? timeline.length - 1 : -1;
+}
+
+/**
+ * How much of a span's text has been spoken by `ms` (0–1). Engines report
+ * no word timings, so this spreads the text over the voiced frames of the
+ * envelope: pauses between phrases do not move the words along. Without an
+ * envelope it falls back to elapsed time.
+ */
+export function textFraction(span: Span, ms: number): number {
+  const f = Math.min(1, Math.max(0, (ms - span.startMs) / Math.max(span.durationMs, 1)));
+  const levels = span.levels;
+  if (!levels || levels.length < 4) return f;
+  const upto = Math.floor(f * levels.length);
+  let voiced = 0;
+  let done = 0;
+  for (let i = 0; i < levels.length; i++) {
+    if (levels[i] > 18) {
+      voiced++;
+      if (i < upto) done++;
+    }
+  }
+  return voiced ? done / voiced : f;
+}
+
+export interface LineWord {
+  text: string;
+  segment: number;
+  /** Position of the word inside its segment's text, 0–1. */
+  at: number;
+}
+
+export interface LineSentence {
+  id: number;
+  segments: number[];
+  words: LineWord[];
+}
+
+/** Sentences of the document with their words, for the text player styles. */
+export function buildSentences(doc: DocumentView | null): LineSentence[] {
+  if (!doc) return [];
+  const bytes = new TextEncoder().encode(doc.text);
+  const dec = new TextDecoder();
+  const out: LineSentence[] = [];
+  for (const [seg, sentence, start, end] of doc.segments) {
+    const text = dec.decode(bytes.subarray(start, end));
+    let s = out[out.length - 1];
+    if (!s || s.id !== sentence) {
+      s = { id: sentence, segments: [], words: [] };
+      out.push(s);
+    }
+    s.segments.push(seg);
+    const len = Math.max(text.length, 1);
+    for (const m of text.matchAll(/\S+/g)) s.words.push({ text: m[0], segment: seg, at: (m.index ?? 0) / len });
+  }
+  return out;
+}

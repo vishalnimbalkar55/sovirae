@@ -62,6 +62,9 @@ export interface Voice {
   approximatePronunciation: boolean;
 }
 
+/** What the line under the player controls shows. */
+export type PlayerLine = "wave" | "ticker" | "steps" | "meter" | "breathing";
+
 export type ResourceProfile = "eco" | "balanced" | "performance";
 
 export interface Settings {
@@ -78,6 +81,7 @@ export interface Settings {
   hotkeysPaused: boolean;
   sentenceSnap: boolean;
   followReading: boolean;
+  playerLine: PlayerLine;
   playerTopmost: boolean;
   chromeBridge: boolean;
   pairedExtensions: string[];

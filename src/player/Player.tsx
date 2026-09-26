@@ -4,8 +4,9 @@ import { formatTime, rateLabel, sourceLabel } from "../lib/format";
 import { Back10, Close, Collapse, Expand, Forward10, Mark, Mute, Pause, Play, Volume } from "../lib/icons";
 import { Slider } from "../lib/ui";
 import { useTheme } from "../lib/useApp";
-import type { DocumentView, Envelope, Notice, Settings, Snapshot, Status } from "../lib/types";
-import { buildTimeline } from "./timeline";
+import type { DocumentView, Envelope, Notice, PlayerLine as PlayerLineStyle, Settings, Snapshot, Status } from "../lib/types";
+import { BreathingLine, LiveMeter, SentenceSteps, WordTicker, type LineProps } from "./lines";
+import { buildSentences, buildTimeline, type LineSentence } from "./timeline";
 import Waveform from "./Waveform";
 
 const STATUS_LABEL: Partial<Record<Status, string>> = {
@@ -67,6 +68,14 @@ export default function Player() {
     return m;
   }, [envelopes, doc]);
   const timeline = useMemo(() => buildTimeline(doc, sessionEnvelopes), [doc, sessionEnvelopes]);
+  const sentences = useMemo(() => buildSentences(doc), [doc]);
+  const line = settings?.playerLine ?? "wave";
+
+  // The text styles need a taller collapsed player; Rust knows the height.
+  useEffect(() => {
+    if (settings && !expanded) api.playerExpand(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [line]);
 
   const idle = !snap || snap.sessionId === 0;
 
@@ -200,7 +209,9 @@ export default function Player() {
               <span className="muted"> / {snap!.durationIsFinal ? "" : "~"}{formatTime(snap!.durationMs)}</span>
             </span>
           </div>
-          <Waveform
+          <PlayerLine
+            style={line}
+            sentences={sentences}
             timeline={timeline}
             positionMs={snap!.positionMs}
             durationMs={snap!.durationMs}
@@ -223,6 +234,21 @@ export default function Player() {
       )}
     </div>
   );
+}
+
+function PlayerLine({ style, sentences, ...props }: LineProps & { style: PlayerLineStyle; sentences: LineSentence[] }) {
+  switch (style) {
+    case "ticker":
+      return <WordTicker {...props} sentences={sentences} />;
+    case "steps":
+      return <SentenceSteps {...props} sentences={sentences} />;
+    case "meter":
+      return <LiveMeter {...props} />;
+    case "breathing":
+      return <BreathingLine {...props} />;
+    default:
+      return <Waveform {...props} />;
+  }
 }
 
 function ReadingPane({ doc, sentenceId, follow, fontSize, serif }: {

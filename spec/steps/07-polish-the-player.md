@@ -17,6 +17,7 @@
 ## Progress — 2026-09-26
 
 - Waveform uses real per-segment amplitude and a dim placeholder for unsynthesized audio, capped at 30 fps and stopped while paused or hidden. Reviewed in light and dark at 520 × 112 and 620 × 500.
+- Player line styles (user's pick from the 10 ideas in `design/speaking-visuals.html`): Settings › Appearance › Player line offers Waveform (default), Word ticker, Sentence steps, Live meter, and Breathing line, saved as `playerLine`. Word ticker and Sentence steps make the collapsed player 124 px tall instead of 112 px. Engines report no word timings, so the spoken word is estimated by spreading each segment's text over the voiced frames of its envelope. Every style seeks by drag, click, or arrow keys through the same invisible range. Reviewed live in the browser (dev mock now simulates playback) at 520 × 112/124 in light and dark; Rust test covers the fallback and heights.
 - Open: source chip focus action, per-monitor position memory checks, audio-device recovery testing, media keys, and profiling.
 
 ## Relevant requirements

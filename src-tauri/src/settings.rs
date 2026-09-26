@@ -120,6 +120,9 @@ pub struct Settings {
     pub hotkeys_paused: bool,
     pub sentence_snap: bool,
     pub follow_reading: bool,
+    /// What the line under the player controls shows: `wave`, `ticker`,
+    /// `steps`, `meter`, or `breathing`.
+    pub player_line: String,
     pub player_topmost: bool,
     pub player_position: Option<(f64, f64)>,
     pub shortcuts: Shortcuts,
@@ -147,6 +150,7 @@ impl Default for Settings {
             hotkeys_paused: false,
             sentence_snap: false,
             follow_reading: true,
+            player_line: "wave".into(),
             player_topmost: true,
             player_position: None,
             shortcuts: Shortcuts::default(),
@@ -157,7 +161,14 @@ impl Default for Settings {
     }
 }
 
+pub const PLAYER_LINES: [&str; 5] = ["wave", "ticker", "steps", "meter", "breathing"];
+
 impl Settings {
+    /// Height of the collapsed player; the text styles need one more line.
+    pub fn player_height(&self) -> f64 {
+        if matches!(self.player_line.as_str(), "ticker" | "steps") { 124.0 } else { 112.0 }
+    }
+
     /// Clamps values that may have been edited by hand.
     pub fn sanitize(mut self) -> Self {
         self.rate = round_rate(self.rate);
@@ -165,6 +176,9 @@ impl Settings {
         self.reading_font_size = self.reading_font_size.clamp(14, 28);
         if !["system", "light", "dark"].contains(&self.theme.as_str()) {
             self.theme = "system".into();
+        }
+        if !PLAYER_LINES.contains(&self.player_line.as_str()) {
+            self.player_line = "wave".into();
         }
         if !["serif", "sans"].contains(&self.reading_font.as_str()) {
             self.reading_font = "serif".into();
@@ -240,5 +254,15 @@ mod tests {
         assert_eq!(s.rate, 3.0);
         assert_eq!(s.theme, "system");
         assert!(s.keep_running);
+    }
+
+    #[test]
+    fn player_line_falls_back_and_sets_height() {
+        let s: Settings = serde_json::from_str(r#"{"playerLine": "sparkles"}"#).unwrap();
+        let s = s.sanitize();
+        assert_eq!(s.player_line, "wave");
+        assert_eq!(s.player_height(), 112.0);
+        let s: Settings = serde_json::from_str(r#"{"playerLine": "ticker"}"#).unwrap();
+        assert_eq!(s.sanitize().player_height(), 124.0);
     }
 }
