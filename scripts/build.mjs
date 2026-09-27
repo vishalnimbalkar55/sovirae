@@ -21,7 +21,7 @@
 //   node scripts/build.mjs --collect       copy the last builds into build/ without rebuilding
 
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -126,8 +126,39 @@ function checkPrerequisites(targets) {
   console.log(`${rust}, node ${process.version}, building: ${targets.join(", ")}`);
 }
 
+/**
+ * Native modules (`.node`) loaded by a running process, e.g. `npm run app:dev`.
+ * Windows cannot delete them, and `npm ci` would stop halfway through
+ * emptying node_modules. Renaming a loaded DLL fails the same way, so each is
+ * renamed and put back.
+ */
+function lockedNativeModules() {
+  if (HOST !== "windows" || !existsSync("node_modules")) return [];
+  const locked = [];
+  const scan = (dir, depth) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory() && depth < 2 && e.name !== ".bin") scan(p, depth + 1);
+      else if (e.isFile() && e.name.endsWith(".node")) {
+        try {
+          renameSync(p, `${p}.probe`);
+          renameSync(`${p}.probe`, p);
+        } catch {
+          locked.push(p);
+        }
+      }
+    }
+  };
+  scan("node_modules", 0);
+  return locked;
+}
+
 function install() {
   step("Installing JavaScript packages");
+  const locked = lockedNativeModules();
+  if (locked.length) {
+    fail(`${locked.join(", ")} is in use, probably by \`npm run app:dev\`. Stop it first, or keep node_modules with: npm run build:all -- --no-install`);
+  }
   run("npm", existsSync("package-lock.json") ? ["ci", "--no-audit", "--no-fund"] : ["install", "--no-audit", "--no-fund"]);
 }
 
