@@ -124,9 +124,9 @@ function install() {
 function test() {
   step("Running tests");
   if (HOST === "windows") {
-    // The Chrome native host and Kokoro worker are ported in later phases
+    // The Chrome native host is ported in a later phase
     // (spec/steps/14-windows-support.md).
-    run("cargo", ["test", "--workspace", "--exclude", "sovirae-native-host", "--exclude", "sovirae-kokoro-worker"]);
+    run("cargo", ["test", "--workspace", "--exclude", "sovirae-native-host"]);
     run("node", ["--test", "ext/tests/*.test.js"]);
   } else {
     run("npm", ["test"]);

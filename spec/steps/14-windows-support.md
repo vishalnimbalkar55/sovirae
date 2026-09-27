@@ -41,6 +41,13 @@
   - Build: `npm run build:all` (`scripts/build.mjs`) builds every platform this computer can and fills `build/macos`, `build/windows`, `build/ext`; a Mac cross-builds the Windows installer after `npm run setup:windows-cross` (experimental, cargo-xwin).
   - macOS: 56 Rust tests and 11 extension tests pass; Windows check of all crates except the native host and Kokoro worker is clean.
 
+- 2026-09-27 — Phase 3 on the Windows PC (debug app run from `target/`):
+  - Both workers build for MSVC unchanged; Kokoro runs on the CPU (ONNX Runtime linked in, `DirectML.dll` not needed). Measured with the bench examples, 4 threads: Kokoro fp32 RTF ~0.54 warm, Pocket TTS RTF ~0.55–0.98; cancellation ok.
+  - eSpeak NG 1.52.0 is bundled, not installed: `scripts/prepare-windows.mjs` (Tauri's before-dev/build command on Windows) downloads the official MSI (SHA-256 pinned), unpacks it with `msiexec /a`, and stages it with the workers and its `COPYING` in `target/windows-bundle/`, which the installer ships next to `Sovirae.exe`. The bundled copy needs `ESPEAK_DATA_PATH` (no registry entry), which the phonemizer sets.
+  - Helper processes start with `CREATE_NO_WINDOW` so the windowed app doesn't flash consoles.
+  - Model download seen failing once with "The system cannot find the file specified" on a voice file; retrying resumed and completed. Cause not identified.
+  - Not yet verified: the NSIS installer with the bundled helpers, and the Mac cross-build (`prepare-windows.mjs` needs `msiextract` from msitools there).
+
 ## Relevant requirements
 
 - [5. Architecture](../chunks/05-architecture.md)

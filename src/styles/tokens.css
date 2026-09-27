@@ -282,6 +282,8 @@ kbd {
 .select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .select:disabled { opacity: 0.55; cursor: default; }
 .select.compact { height: 34px; width: auto; font-size: 13px; }
+/* Native option popups default to a white background on Windows. */
+.select option { background: var(--surface); color: var(--ink); }
 
 /* ── Slider ──────────────────────────────────────────── */
 .slider {

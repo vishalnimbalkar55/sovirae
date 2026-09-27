@@ -72,6 +72,10 @@ html.player-root, html.player-root body { background: transparent; overflow: hid
   color: var(--ink);
 }
 .rate select:hover { background: var(--fill-hover); }
+/* The option list is a native popup; give it opaque theme colors so it
+   doesn't render theme ink on the OS's default white. */
+.rate select option { background: var(--surface); color: var(--ink); font-weight: 500; }
+.rate select option:checked { background: var(--raised); color: var(--ink); font-weight: 650; }
 .vol { display: flex; align-items: center; gap: 2px; margin-left: 6px; }
 .vol .slider { width: 76px; }
 .time { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }

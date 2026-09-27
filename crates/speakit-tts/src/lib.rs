@@ -233,6 +233,18 @@ pub fn system_engine() -> Box<dyn Engine> {
     }
 }
 
+/// Keeps a helper process (worker, espeak-ng) from opening a console
+/// window when started by the windowed app on Windows.
+pub(crate) fn no_console(cmd: &mut std::process::Command) -> &mut std::process::Command {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
+}
+
 /// Decodes a WAV stream to mono float PCM at its own sample rate.
 #[allow(dead_code)] // used by the platform system engines
 pub(crate) fn pcm_from_wav<R: std::io::Read>(source: R) -> Result<Pcm, TtsError> {

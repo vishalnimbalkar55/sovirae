@@ -104,8 +104,146 @@ impl Normalized {
     }
 }
 
+/// Markdown syntax found by [`markdown_markup`]: chars that must not be
+/// spoken, and line breaks that end a block (heading, list item) and so
+/// read as a paragraph break.
+struct Markup {
+    hidden: Vec<bool>,
+    block_end: Vec<bool>,
+}
+
+/// Flags Markdown syntax characters (`## `, `**`, `` ` ``, `- `, `> `,
+/// `[text](url)` …) so they are skipped instead of read aloud. Indices are
+/// positions in `chars`.
+fn markdown_markup(chars: &[(usize, char)]) -> Markup {
+    let n = chars.len();
+    let mut hidden = vec![false; n];
+    let mut block_end = vec![false; n];
+    let c = |i: usize| chars.get(i).map(|&(_, c)| c);
+    let is_space = |ch: Option<char>| ch.is_none_or(|ch| ch == ' ' || ch == '\t');
+
+    // Line-level syntax.
+    let mut start = 0;
+    while start < n {
+        let end = (start..n).find(|&i| c(i) == Some('\n')).unwrap_or(n);
+        let mut p = start;
+        while is_space(c(p)) && p < end {
+            p += 1;
+        }
+        let line: String = chars[p..end].iter().map(|&(_, ch)| ch).collect();
+        let trimmed = line.trim_end();
+        let rule = trimmed.chars().filter(|ch| !ch.is_whitespace()).collect::<String>();
+        let is_rule = rule.len() >= 3
+            && ['-', '*', '_'].iter().any(|&m| rule.chars().all(|ch| ch == m));
+        let is_fence = trimmed.starts_with("```") || trimmed.starts_with("~~~");
+        let is_table_rule = trimmed.starts_with('|')
+            && trimmed.contains('-')
+            && trimmed.chars().all(|ch| matches!(ch, '|' | '-' | ':' | ' ' | '\t'));
+        if is_rule || is_fence || is_table_rule {
+            hidden[p..end].fill(true);
+        } else {
+            // Blockquote markers, possibly nested.
+            while c(p) == Some('>') {
+                hidden[p] = true;
+                p += 1;
+                while is_space(c(p)) && p < end {
+                    p += 1;
+                }
+            }
+            let hashes = (p..end).take_while(|&i| c(i) == Some('#')).count();
+            let bullet = matches!(c(p), Some('-' | '*' | '+')) && is_space(c(p + 1));
+            let digits = (p..end).take_while(|&i| c(i).is_some_and(|x| x.is_ascii_digit())).count();
+            let numbered = digits > 0 && matches!(c(p + digits), Some('.' | ')')) && is_space(c(p + digits + 1));
+            let heading = (1..=6).contains(&hashes) && is_space(c(p + hashes));
+            if heading || bullet || numbered {
+                // A block stands alone: break before and after it.
+                if start > 0 {
+                    block_end[start - 1] = true;
+                }
+                if end < n {
+                    block_end[end] = true;
+                }
+            }
+            if heading {
+                hidden[p..p + hashes].fill(true);
+                // Optional closing hashes: "## Title ##".
+                let mut q = end;
+                while q > p + hashes && is_space(c(q - 1)) {
+                    q -= 1;
+                }
+                while q > p + hashes && c(q - 1) == Some('#') {
+                    q -= 1;
+                    hidden[q] = true;
+                }
+            } else if bullet {
+                hidden[p] = true;
+            }
+            if trimmed.starts_with('|') {
+                for i in p..end {
+                    if c(i) == Some('|') {
+                        hidden[i] = true;
+                    }
+                }
+            }
+        }
+        start = end + 1;
+    }
+
+    // Inline syntax.
+    let alnum = |ch: Option<char>| ch.is_some_and(char::is_alphanumeric);
+    let mut i = 0;
+    while i < n {
+        if hidden[i] {
+            i += 1;
+            continue;
+        }
+        match chars[i].1 {
+            '`' => hidden[i] = true,
+            '*' => {
+                // Keep arithmetic such as "2*3".
+                let digits = c(i.wrapping_sub(1)).is_some_and(|p| p.is_ascii_digit())
+                    && c(i + 1).is_some_and(|x| x.is_ascii_digit());
+                hidden[i] = !digits;
+            }
+            '_' | '~' => {
+                let run = (i..n).take_while(|&j| c(j) == Some(chars[i].1)).count();
+                // Keep snake_case and a lone "~5 minutes".
+                let inside_word = run == 1 && alnum(c(i.wrapping_sub(1))) && alnum(c(i + 1));
+                let keep = inside_word || (chars[i].1 == '~' && run == 1);
+                if !keep {
+                    hidden[i..i + run].fill(true);
+                }
+                i += run;
+                continue;
+            }
+            '[' => {
+                // [text](url) and ![alt](url): speak only the text.
+                let close = (i + 1..n).take_while(|&j| c(j) != Some('\n')).find(|&j| c(j) == Some(']'));
+                if let Some(close) = close.filter(|&j| c(j + 1) == Some('(')) {
+                    let paren = (close + 2..n)
+                        .take_while(|&j| !matches!(c(j), Some('\n' | ' ')))
+                        .find(|&j| c(j) == Some(')'));
+                    if let Some(paren) = paren {
+                        hidden[i] = true;
+                        if i > 0 && c(i - 1) == Some('!') {
+                            hidden[i - 1] = true;
+                        }
+                        hidden[close..=paren].fill(true);
+                        i += 1;
+                        continue;
+                    }
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    Markup { hidden, block_end }
+}
+
 /// Normalizes line endings, control characters, and repeated layout
-/// whitespace while retaining paragraph boundaries (blank lines).
+/// whitespace while retaining paragraph boundaries (blank lines). Markdown
+/// syntax is dropped so it is not read aloud.
 pub fn normalize(original: &str) -> Normalized {
     let mut text = String::with_capacity(original.len());
     let mut origin = Vec::with_capacity(original.len() / 2);
@@ -113,10 +251,15 @@ pub fn normalize(original: &str) -> Normalized {
     let mut pending_newlines = 0usize;
     let mut pending_at = 0usize;
 
-    let mut chars = original.char_indices().peekable();
-    while let Some((i, c)) = chars.next() {
+    let all: Vec<(usize, char)> = original.char_indices().collect();
+    let markup = markdown_markup(&all);
+    let mut chars = all.iter().copied().enumerate().peekable();
+    while let Some((k, (i, c))) = chars.next() {
+        if markup.hidden[k] {
+            continue;
+        }
         let c = if c == '\r' {
-            if matches!(chars.peek(), Some((_, '\n'))) {
+            if matches!(chars.peek(), Some((_, (_, '\n')))) {
                 continue;
             }
             '\n'
@@ -128,7 +271,7 @@ pub fn normalize(original: &str) -> Normalized {
                 if pending_newlines == 0 {
                     pending_at = i;
                 }
-                pending_newlines += if c == '\u{2029}' { 2 } else { 1 };
+                pending_newlines += if c == '\u{2029}' || markup.block_end[k] { 2 } else { 1 };
                 pending_space = None;
             }
             c if c.is_whitespace() => {
@@ -191,6 +334,26 @@ mod tests {
     fn normalizes_whitespace_and_keeps_paragraphs() {
         let n = normalize("Hello   world.\r\nSame para.\r\n\r\n\r\nNew  para.\u{0007}");
         assert_eq!(n.text, "Hello world. Same para.\n\nNew para.");
+    }
+
+    #[test]
+    fn strips_markdown_syntax() {
+        let n = normalize("## Setup\r\nUse **bold** and *em*, `code`.\n- one\n- two\n> quoted\n\n---\n\nSee [docs](https://x.y/z).");
+        assert_eq!(n.text, "Setup\n\nUse bold and em, code.\n\none\n\ntwo\n\nquoted\n\nSee docs.");
+        let n = normalize("Steps:\n1. First\n2. Second");
+        assert_eq!(n.text, "Steps:\n\n1. First\n\n2. Second");
+        let n = normalize("snake_case, 2*3, C# and #1, ~5 min, __under__ ~~gone~~");
+        assert_eq!(n.text, "snake_case, 2*3, C# and #1, ~5 min, under gone");
+    }
+
+    #[test]
+    fn markdown_maps_back_to_original() {
+        let src = "# Title\n\n**Bold** text.";
+        let n = normalize(src);
+        assert_eq!(n.text, "Title\n\nBold text.");
+        let b = n.text.find("Bold").unwrap();
+        assert_eq!(&src[n.to_original(b)..], "Bold** text.");
+        assert_eq!(&src[n.to_original(0)..], "Title\n\n**Bold** text.");
     }
 
     #[test]

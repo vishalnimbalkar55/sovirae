@@ -238,7 +238,15 @@ function ModelRow({ model, active, onUse }: { model: ModelView; active: boolean;
         {blocked && (
           <p className="model-warn">
             {model.missing.includes("espeak-ng") ? (
-              <>Needs espeak-ng for pronunciation. Install it with <code>brew install espeak-ng</code>, then reopen Sovirae.</>
+              document.documentElement.dataset.platform === "windows" ? (
+                <>
+                  Needs espeak-ng for pronunciation. Install it from the{" "}
+                  <a className="link" href="https://github.com/espeak-ng/espeak-ng/releases" target="_blank" rel="noreferrer">eSpeak NG releases page</a>
+                  {" "}(the <code>.msi</code>), then reopen Sovirae.
+                </>
+              ) : (
+                <>Needs espeak-ng for pronunciation. Install it with <code>brew install espeak-ng</code>, then reopen Sovirae.</>
+              )
             ) : (
               <>The voice engine for this model is missing from this build.</>
             )}

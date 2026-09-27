@@ -39,7 +39,7 @@ impl Drop for WorkerProc {
 impl WorkerProc {
     /// Starts `cmd` and waits until the worker reports it is ready.
     pub fn spawn(mut cmd: Command, name: &str, cancel: &CancelToken, timeout: Duration) -> Result<Self, TtsError> {
-        let mut child = cmd
+        let mut child = crate::no_console(&mut cmd)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())

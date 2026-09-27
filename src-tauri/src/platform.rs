@@ -30,7 +30,7 @@ pub fn set_player_keyable<R: Runtime>(window: &WebviewWindow<R>, keyable: bool) 
     }
     #[cfg(windows)]
     {
-        windows::set_no_activate(window, !keyable);
+        let _ = window.set_focusable(keyable);
         if keyable {
             let _ = window.set_focus();
         }
@@ -71,45 +71,30 @@ mod macos {
 #[cfg(windows)]
 pub mod windows {
     use tauri::{Runtime, WebviewWindow};
-    use windows::Win32::Foundation::{CloseHandle, HANDLE, HWND};
+    use windows::Win32::Foundation::{CloseHandle, HANDLE};
     use windows::Win32::Networking::WinSock::{WSAIoctl, SOCKET};
     use windows::Win32::Security::{GetLengthSid, GetTokenInformation, TokenUser, TOKEN_QUERY, TOKEN_USER};
     use windows::Win32::System::Threading::{
         GetCurrentProcess, OpenProcess, OpenProcessToken, PROCESS_QUERY_LIMITED_INFORMATION,
     };
-    use windows::Win32::UI::WindowsAndMessaging::{
-        GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, ShowWindow, GWL_EXSTYLE, HWND_TOPMOST, SWP_NOACTIVATE,
-        SWP_NOMOVE, SWP_NOSIZE, SW_SHOWNOACTIVATE, WS_EX_NOACTIVATE,
-    };
+    use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, HWND_TOP, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE};
 
-    /// Keeps clicks on the player from activating it, so typing stays in
-    /// the user's application.
-    pub fn set_no_activate<R: Runtime>(w: &WebviewWindow<R>, on: bool) {
-        let Ok(hwnd) = w.hwnd() else { return };
-        // SAFETY: `hwnd` is this live window; only the extended style changes.
-        unsafe {
-            let style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-            let flag = WS_EX_NOACTIVATE.0 as isize;
-            let next = if on { style | flag } else { style & !flag };
-            if next != style {
-                SetWindowLongPtrW(hwnd, GWL_EXSTYLE, next);
-            }
-        }
-    }
-
+    /// Visibility and focusability go through Tauri so its window state
+    /// stays true: it skips `hide()` for a window it thinks is hidden, and
+    /// rewrites the window styles from that state on resize or topmost
+    /// changes. The player is created with `focus: false`, so Tauri shows
+    /// it with `SW_SHOWNOACTIVATE`; not focusable adds `WS_EX_NOACTIVATE`
+    /// so clicks keep typing in the user's application.
     pub fn show_no_activate<R: Runtime>(w: &WebviewWindow<R>) {
-        let Ok(hwnd) = w.hwnd() else { return };
         if !w.is_visible().unwrap_or(false) {
-            set_no_activate(w, true);
+            let _ = w.set_focusable(false);
         }
-        show(hwnd);
-    }
-
-    fn show(hwnd: HWND) {
-        // SAFETY: plain window calls on a live window handle.
+        let _ = w.show();
+        let Ok(hwnd) = w.hwnd() else { return };
+        // SAFETY: plain window call on a live window handle. HWND_TOP raises
+        // it within its band and leaves the topmost setting alone.
         unsafe {
-            let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
-            let _ = SetWindowPos(hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
+            let _ = SetWindowPos(hwnd, Some(HWND_TOP), 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
         }
     }
 

@@ -47,17 +47,34 @@ pub struct Phonemizer {
 
 impl Phonemizer {
     /// Finds espeak-ng: `SOVIRAE_ESPEAK`, a bundled copy next to the app,
-    /// then common install locations.
+    /// then common install locations and `PATH`.
     pub fn find() -> Option<Self> {
+        let exe = if cfg!(windows) { "espeak-ng.exe" } else { "espeak-ng" };
         let mut candidates: Vec<PathBuf> = Vec::new();
         if let Ok(p) = std::env::var("SOVIRAE_ESPEAK") {
             candidates.push(p.into());
         }
         if let Some(dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(Path::to_path_buf)) {
-            candidates.push(dir.join("espeak-ng"));
+            candidates.push(dir.join(exe));
+            // Windows bundles it in a folder with its data; in development
+            // scripts/prepare-windows.mjs stages it under target/.
+            candidates.push(dir.join("espeak-ng").join(exe));
+            candidates.push(dir.join("../windows-bundle/espeak-ng").join(exe));
         }
-        for p in ["/opt/homebrew/bin/espeak-ng", "/usr/local/bin/espeak-ng", "/usr/bin/espeak-ng"] {
-            candidates.push(p.into());
+        if cfg!(windows) {
+            // Where the official eSpeak NG installer puts it.
+            for var in ["ProgramFiles", "ProgramFiles(x86)"] {
+                if let Ok(dir) = std::env::var(var) {
+                    candidates.push(Path::new(&dir).join("eSpeak NG").join(exe));
+                }
+            }
+        } else {
+            for p in ["/opt/homebrew/bin/espeak-ng", "/usr/local/bin/espeak-ng", "/usr/bin/espeak-ng"] {
+                candidates.push(p.into());
+            }
+        }
+        if let Some(path) = std::env::var_os("PATH") {
+            candidates.extend(std::env::split_paths(&path).map(|dir| dir.join(exe)));
         }
         candidates.into_iter().find(|p| p.is_file()).map(|bin| Self { bin })
     }
@@ -112,7 +129,13 @@ impl Phonemizer {
         if lines.is_empty() {
             return Ok(Vec::new());
         }
-        let mut child = Command::new(&self.bin)
+        let mut cmd = Command::new(&self.bin);
+        // A bundled copy has no installer registry entry pointing at its
+        // data, and crashes without one.
+        if let Some(dir) = self.bin.parent().filter(|d| d.join("espeak-ng-data").is_dir()) {
+            cmd.env("ESPEAK_DATA_PATH", dir);
+        }
+        let mut child = crate::no_console(&mut cmd)
             .args(["-q", "--ipa", "--tie=^", "-v", language])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
