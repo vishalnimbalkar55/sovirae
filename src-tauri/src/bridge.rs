@@ -90,33 +90,121 @@ impl Pairing {
 
 // ---- Registration ------------------------------------------------------------
 
-/// Chromium-family browsers and where they look for per-user host manifests.
-fn browser_roots() -> Vec<(&'static str, PathBuf)> {
-    let Some(home) = std::env::var_os("HOME").map(PathBuf::from) else { return Vec::new() };
-    #[cfg(target_os = "macos")]
-    let list = [
-        ("Google Chrome", "Library/Application Support/Google/Chrome"),
-        ("Chrome Beta", "Library/Application Support/Google/Chrome Beta"),
-        ("Chrome Canary", "Library/Application Support/Google/Chrome Canary"),
-        ("Chromium", "Library/Application Support/Chromium"),
-        ("Microsoft Edge", "Library/Application Support/Microsoft Edge"),
-        ("Brave", "Library/Application Support/BraveSoftware/Brave-Browser"),
-        ("Vivaldi", "Library/Application Support/Vivaldi"),
-        ("Arc", "Library/Application Support/Arc/User Data"),
-    ];
-    #[cfg(not(target_os = "macos"))]
-    let list = [
-        ("Google Chrome", ".config/google-chrome"),
-        ("Chromium", ".config/chromium"),
-        ("Microsoft Edge", ".config/microsoft-edge"),
-        ("Brave", ".config/BraveSoftware/Brave-Browser"),
-        ("Vivaldi", ".config/vivaldi"),
-    ];
-    list.iter().map(|(name, rel)| (*name, home.join(rel))).collect()
+/// A Chromium-family browser. `root` is its user-data folder, whose presence
+/// means the browser is installed for this user.
+struct Browser {
+    name: &'static str,
+    root: PathBuf,
+    /// Windows: the `HKCU\Software\…` key under which it looks for hosts.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    key: &'static str,
 }
 
-fn manifest_path(root: &Path) -> PathBuf {
-    root.join("NativeMessagingHosts").join(format!("{HOST_NAME}.json"))
+impl Browser {
+    fn installed(&self) -> bool {
+        self.root.is_dir()
+    }
+}
+
+/// Chromium-family browsers and where they look for per-user host manifests.
+fn browser_roots() -> Vec<Browser> {
+    #[cfg(windows)]
+    let (base, list) = (
+        std::env::var_os("LOCALAPPDATA").map(PathBuf::from),
+        [
+            ("Google Chrome", r"Google\Chrome\User Data", r"Software\Google\Chrome"),
+            ("Microsoft Edge", r"Microsoft\Edge\User Data", r"Software\Microsoft\Edge"),
+            ("Brave", r"BraveSoftware\Brave-Browser\User Data", r"Software\BraveSoftware\Brave-Browser"),
+            ("Chromium", r"Chromium\User Data", r"Software\Chromium"),
+            ("Vivaldi", r"Vivaldi\User Data", r"Software\Vivaldi"),
+        ],
+    );
+    #[cfg(target_os = "macos")]
+    let (base, list) = (
+        std::env::var_os("HOME").map(PathBuf::from),
+        [
+            ("Google Chrome", "Library/Application Support/Google/Chrome", ""),
+            ("Chrome Beta", "Library/Application Support/Google/Chrome Beta", ""),
+            ("Chrome Canary", "Library/Application Support/Google/Chrome Canary", ""),
+            ("Chromium", "Library/Application Support/Chromium", ""),
+            ("Microsoft Edge", "Library/Application Support/Microsoft Edge", ""),
+            ("Brave", "Library/Application Support/BraveSoftware/Brave-Browser", ""),
+            ("Vivaldi", "Library/Application Support/Vivaldi", ""),
+            ("Arc", "Library/Application Support/Arc/User Data", ""),
+        ],
+    );
+    #[cfg(not(any(windows, target_os = "macos")))]
+    let (base, list) = (
+        std::env::var_os("HOME").map(PathBuf::from),
+        [
+            ("Google Chrome", ".config/google-chrome", ""),
+            ("Chromium", ".config/chromium", ""),
+            ("Microsoft Edge", ".config/microsoft-edge", ""),
+            ("Brave", ".config/BraveSoftware/Brave-Browser", ""),
+            ("Vivaldi", ".config/vivaldi", ""),
+        ],
+    );
+    let Some(base) = base else { return Vec::new() };
+    list.iter().map(|&(name, rel, key)| Browser { name, root: base.join(rel), key }).collect()
+}
+
+/// Where `browser` reads the host manifest: a file in its profile folder on
+/// macOS and Linux; on Windows, the file its registry key points to.
+fn registered_manifest(browser: &Browser) -> Option<PathBuf> {
+    #[cfg(windows)]
+    return crate::platform::windows::reg_get_default(&host_key(browser)).map(PathBuf::from);
+    #[cfg(not(windows))]
+    Some(browser.root.join("NativeMessagingHosts").join(format!("{HOST_NAME}.json")))
+}
+
+#[cfg(windows)]
+fn host_key(browser: &Browser) -> String {
+    format!(r"{}\NativeMessagingHosts\{HOST_NAME}", browser.key)
+}
+
+/// Windows keeps one manifest, beside the bridge socket, for every browser.
+#[cfg(windows)]
+fn shared_manifest_path() -> Option<PathBuf> {
+    speakit_protocol::socket_path().map(|p| p.with_file_name(format!("{HOST_NAME}.json")))
+}
+
+/// Writes `json` where `browser` looks for it, if it is not already there.
+fn write_registration(browser: &Browser, json: &str) -> Result<(), String> {
+    #[cfg(windows)]
+    let path = shared_manifest_path().ok_or("%LOCALAPPDATA% is not set")?;
+    #[cfg(not(windows))]
+    let path = registered_manifest(browser).ok_or("no manifest path")?;
+    if std::fs::read_to_string(&path).ok().as_deref() != Some(json) {
+        if let Some(dir) = path.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        std::fs::write(&path, json).map_err(|e| format!("could not write {}: {e}", path.display()))?;
+    }
+    #[cfg(windows)]
+    {
+        let value = path.to_string_lossy();
+        if registered_manifest(browser).as_deref() != Some(path.as_path()) {
+            crate::platform::windows::reg_set_default(&host_key(browser), &value)?;
+        }
+    }
+    Ok(())
+}
+
+/// Removes this app's registration from `browser`, leaving others' alone.
+fn remove_registration(browser: &Browser) {
+    let Some(path) = registered_manifest(browser) else { return };
+    let ours = std::fs::read_to_string(&path).is_ok_and(|s| s.contains(HOST_NAME));
+    #[cfg(windows)]
+    {
+        if ours || !path.exists() {
+            crate::platform::windows::reg_delete(&host_key(browser));
+        }
+        return;
+    }
+    #[cfg(not(windows))]
+    if ours {
+        let _ = std::fs::remove_file(path);
+    }
 }
 
 /// The host ships next to the app executable; in development it is built
@@ -162,15 +250,9 @@ pub fn register(app: &AppHandle) -> Result<(), String> {
         "allowed_origins": origins,
     });
     let json = serde_json::to_string_pretty(&manifest).map_err(|e| e.to_string())?;
-    for (_, root) in browser_roots().into_iter().filter(|(_, r)| r.is_dir()) {
-        let path = manifest_path(&root);
-        if std::fs::read_to_string(&path).ok().as_deref() != Some(json.as_str()) {
-            if let Some(dir) = path.parent() {
-                let _ = std::fs::create_dir_all(dir);
-            }
-            if let Err(e) = std::fs::write(&path, &json) {
-                log::warn!("could not write {}: {e}", path.display());
-            }
+    for browser in browser_roots().into_iter().filter(Browser::installed) {
+        if let Err(e) = write_registration(&browser, &json) {
+            log::warn!("{}: {e}", browser.name);
         }
     }
     // Record how to start the app: the .app bundle when packaged.
@@ -191,11 +273,12 @@ pub fn register(app: &AppHandle) -> Result<(), String> {
 
 /// Removes host manifests so Chrome reports the bridge as off.
 fn unregister() {
-    for (_, root) in browser_roots() {
-        let path = manifest_path(&root);
-        if std::fs::read_to_string(&path).is_ok_and(|s| s.contains(HOST_NAME)) {
-            let _ = std::fs::remove_file(path);
-        }
+    for browser in browser_roots() {
+        remove_registration(&browser);
+    }
+    #[cfg(windows)]
+    if let Some(path) = shared_manifest_path() {
+        let _ = std::fs::remove_file(path);
     }
 }
 
@@ -623,10 +706,12 @@ pub fn status(app: &AppHandle) -> BridgeStatus {
     let bridge = &state.bridge;
     let browsers = browser_roots()
         .into_iter()
-        .filter(|(_, root)| root.is_dir())
-        .map(|(name, root)| BrowserStatus {
-            name: name.into(),
-            registered: std::fs::read_to_string(manifest_path(&root)).is_ok_and(|s| s.contains(EXTENSION_ID)),
+        .filter(Browser::installed)
+        .map(|b| BrowserStatus {
+            name: b.name.into(),
+            registered: registered_manifest(&b)
+                .and_then(|p| std::fs::read_to_string(p).ok())
+                .is_some_and(|s| s.contains(EXTENSION_ID)),
         })
         .collect();
     let listening = bridge.listener_stop.lock().unwrap().is_some();
@@ -666,12 +751,13 @@ pub fn test_connection(app: &AppHandle) -> TestResult {
     if !app.state::<AppState>().settings.lock().unwrap().chrome_bridge {
         return fail("The Chrome connection is turned off.".into());
     }
-    let Some((browser, root)) = browser_roots().into_iter().find(|(_, r)| r.is_dir()) else {
+    let Some(found) = browser_roots().into_iter().find(Browser::installed) else {
         return fail("No Chromium-based browser was found for this user.".into());
     };
-    let manifest = match std::fs::read_to_string(manifest_path(&root)) {
-        Ok(m) => m,
-        Err(_) => return fail(format!("{browser} has no Sovirae connection registered. Turn the connection off and on again.")),
+    let browser = found.name;
+    let manifest = match registered_manifest(&found).map(std::fs::read_to_string) {
+        Some(Ok(m)) => m,
+        _ => return fail(format!("{browser} has no Sovirae connection registered. Turn the connection off and on again.")),
     };
     let parsed: serde_json::Value = serde_json::from_str(&manifest).unwrap_or_default();
     let Some(host) = parsed.get("path").and_then(|p| p.as_str()).map(PathBuf::from) else {

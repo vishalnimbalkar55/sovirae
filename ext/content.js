@@ -495,11 +495,16 @@
       { key: e.key, repeat: e.repeat, isComposing: e.isComposing, altGraph: e.getModifierState?.('AltGraph'), shiftKey: e.shiftKey, metaKey: e.metaKey, ctrlKey: e.ctrlKey, altKey: e.altKey },
       { editable: editable(document.activeElement) },
     );
-    if (result === 'hold-start') startHold();
-    else if (result === 'cancel') cancelHold();
+    if (result === 'hold-start') {
+      // Windows focuses the browser menu when a lone Alt is released, which
+      // blurs the page and would end picking; see onKeyUp.
+      if (e.key === 'Alt') e.preventDefault();
+      startHold();
+    } else if (result === 'cancel') cancelHold();
   }
 
   function onKeyUp(e) {
+    if (e.key === 'Alt' && (trigger.state !== 'idle' || mode !== 'idle')) e.preventDefault();
     if (trigger.keyup({ key: e.key }) === 'cancel') cancelHold();
   }
 

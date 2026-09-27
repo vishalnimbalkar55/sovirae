@@ -4536,6 +4536,7 @@ version = "0.1.0"
 dependencies = [
  "libc",
  "speakit-protocol",
+ "uds_windows",
 ]
 
 [[package]]

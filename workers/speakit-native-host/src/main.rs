@@ -7,13 +7,15 @@
 //! carries protocol bytes only; diagnostics go to stderr.
 
 use std::io::{self, Write};
-use std::os::unix::fs::{FileTypeExt, MetadataExt};
+#[cfg(unix)]
 use std::os::unix::net::UnixStream;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use speakit_protocol::{codes, read_frame, write_frame, FrameError, Outgoing, MAX_INCOMING_BYTES, MAX_OUTGOING_BYTES};
+#[cfg(windows)]
+use uds_windows::UnixStream;
 
 /// Spec §13.2: wait at most five seconds for the app to come up.
 const LAUNCH_TIMEOUT: Duration = Duration::from_secs(5);
@@ -101,10 +103,18 @@ fn try_connect(socket: &Path) -> Result<Option<UnixStream>, String> {
     let Ok(meta) = std::fs::symlink_metadata(socket) else { return Ok(None) };
     // Only talk to a socket this user owns: another account must not be able
     // to impersonate the app and receive page text.
-    let uid = unsafe { libc::getuid() };
-    if !meta.file_type().is_socket() || meta.uid() != uid {
-        return Err("The Sovirae bridge socket is not owned by this user, so it was not used.".into());
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{FileTypeExt, MetadataExt};
+        let uid = unsafe { libc::getuid() };
+        if !meta.file_type().is_socket() || meta.uid() != uid {
+            return Err("The Sovirae bridge socket is not owned by this user, so it was not used.".into());
+        }
     }
+    // Windows: the socket is in this user's %LOCALAPPDATA%, whose ACL lets
+    // only this user (and SYSTEM and administrators) create files there.
+    #[cfg(windows)]
+    let _ = meta;
     match UnixStream::connect(socket) {
         Ok(s) => Ok(Some(s)),
         Err(_) => Ok(None),
@@ -131,12 +141,27 @@ fn launch_app() -> Result<(), String> {
     };
     cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
     // Detach so the app keeps running when Chrome ends this host process.
+    #[cfg(unix)]
     unsafe {
         use std::os::unix::process::CommandExt;
         cmd.pre_exec(|| {
             libc::setsid();
             Ok(())
         });
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const DETACHED_PROCESS: u32 = 0x0000_0008;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+        const CREATE_BREAKAWAY_FROM_JOB: u32 = 0x0100_0000;
+        // Chrome may run hosts in a job that ends with them; leave it when
+        // the job allows that, else start inside it.
+        cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB);
+        if cmd.spawn().is_ok() {
+            return Ok(());
+        }
+        cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP);
     }
     cmd.spawn().map(|_| ()).map_err(|e| format!("Sovirae could not be started: {e}"))
 }

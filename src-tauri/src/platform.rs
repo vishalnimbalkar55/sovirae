@@ -79,6 +79,18 @@ mod tests {
         assert_eq!(plain_path(PathBuf::from(r"\\?\UNC\server\share\ext")), PathBuf::from(r"\\server\share\ext"));
         assert_eq!(plain_path(PathBuf::from("/Applications/Sovirae.app")), PathBuf::from("/Applications/Sovirae.app"));
     }
+
+    #[cfg(windows)]
+    #[test]
+    #[ignore = "writes and removes HKCU\\Software\\Sovirae-test"]
+    fn registry_default_value_round_trips() {
+        use super::windows::{reg_delete, reg_get_default, reg_set_default};
+        let key = r"Software\Sovirae-test\NativeMessagingHosts\com.sovirae.bridge";
+        reg_set_default(key, r"C:\Users\Zoë\AppData\Local\host.json").unwrap();
+        assert_eq!(reg_get_default(key).as_deref(), Some(r"C:\Users\Zoë\AppData\Local\host.json"));
+        reg_delete(r"Software\Sovirae-test");
+        assert_eq!(reg_get_default(key), None);
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -190,5 +202,73 @@ pub mod windows {
         let sid = (*(buf.as_ptr() as *const TOKEN_USER)).User.Sid;
         let n = GetLengthSid(sid) as usize;
         Some(std::slice::from_raw_parts(sid.0 as *const u8, n).to_vec())
+    }
+
+    // ---- Per-user registry (HKEY_CURRENT_USER) --------------------------------
+
+    use windows::core::HSTRING;
+    use windows::Win32::Foundation::ERROR_SUCCESS;
+    use windows::Win32::System::Registry::{
+        RegCloseKey, RegCreateKeyExW, RegDeleteTreeW, RegGetValueW, RegSetValueExW, HKEY, HKEY_CURRENT_USER,
+        KEY_SET_VALUE, REG_OPTION_NON_VOLATILE, REG_SZ, RRF_RT_REG_SZ,
+    };
+
+    /// Sets the default value of `HKCU\<subkey>`, creating the key.
+    pub fn reg_set_default(subkey: &str, value: &str) -> Result<(), String> {
+        let mut key = HKEY::default();
+        // SAFETY: out-pointer to a local HKEY; the key is closed below.
+        let rc = unsafe {
+            RegCreateKeyExW(
+                HKEY_CURRENT_USER, &HSTRING::from(subkey), None, None, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, None,
+                &mut key, None,
+            )
+        };
+        if rc != ERROR_SUCCESS {
+            return Err(format!("could not create HKCU\\{subkey}: {rc:?}"));
+        }
+        // REG_SZ data: UTF-16 with a terminating NUL, as bytes.
+        let data: Vec<u8> = value.encode_utf16().chain([0]).flat_map(u16::to_le_bytes).collect();
+        // SAFETY: open key; `data` outlives the call.
+        let rc = unsafe { RegSetValueExW(key, None, None, REG_SZ, Some(&data)) };
+        // SAFETY: the key was opened above.
+        unsafe {
+            let _ = RegCloseKey(key);
+        }
+        if rc != ERROR_SUCCESS {
+            return Err(format!("could not write HKCU\\{subkey}: {rc:?}"));
+        }
+        Ok(())
+    }
+
+    /// The default value of `HKCU\<subkey>`, if the key exists.
+    pub fn reg_get_default(subkey: &str) -> Option<String> {
+        let mut len = 0u32;
+        // SAFETY: size query; no buffer.
+        let rc = unsafe { RegGetValueW(HKEY_CURRENT_USER, &HSTRING::from(subkey), None, RRF_RT_REG_SZ, None, None, Some(&mut len)) };
+        if rc != ERROR_SUCCESS || len == 0 {
+            return None;
+        }
+        let mut buf = vec![0u16; (len as usize).div_ceil(2)];
+        // SAFETY: `buf` holds `len` bytes.
+        let rc = unsafe {
+            RegGetValueW(HKEY_CURRENT_USER, &HSTRING::from(subkey), None, RRF_RT_REG_SZ, None, Some(buf.as_mut_ptr().cast()), Some(&mut len))
+        };
+        if rc != ERROR_SUCCESS {
+            return None;
+        }
+        let end = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+        Some(String::from_utf16_lossy(&buf[..end]))
+    }
+
+    /// Deletes `HKCU\<subkey>` and everything under it.
+    pub fn reg_delete(subkey: &str) {
+        // SAFETY: plain registry call.
+        unsafe {
+            let _ = RegDeleteTreeW(HKEY_CURRENT_USER, &HSTRING::from(subkey));
+        }
+        // RegDeleteTreeW empties the key; this removes the key itself.
+        unsafe {
+            let _ = windows::Win32::System::Registry::RegDeleteKeyW(HKEY_CURRENT_USER, &HSTRING::from(subkey));
+        }
     }
 }

@@ -7,4 +7,10 @@ description = "Chrome native messaging host that relays to the Sovirae app"
 
 [dependencies]
 speakit-protocol.workspace = true
+
+[target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+# AF_UNIX sockets (Windows 10 1803+), as in the app.
+uds_windows = "1.1"

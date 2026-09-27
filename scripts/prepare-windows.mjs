@@ -3,6 +3,7 @@
 // target/windows-bundle/, which tauri.windows.conf.json bundles:
 //
 //   sovirae-kokoro-worker.exe, sovirae-pocket-worker.exe   inference workers
+//   sovirae-native-host.exe   Chrome native messaging host (the extension bridge)
 //   cu*.dll, onnxruntime_providers_*.dll, cuda-licenses/   Kokoro on NVIDIA
 //                GPUs, only after `node scripts/fetch-cuda.mjs`
 //   espeak-ng/   eSpeak NG (GPL-3.0, a separate program) for Kokoro
@@ -27,7 +28,7 @@ const ESPEAK = {
   license: "https://raw.githubusercontent.com/espeak-ng/espeak-ng/1.52.0/COPYING",
   licenseSha256: "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903",
 };
-const WORKERS = ["sovirae-kokoro-worker", "sovirae-pocket-worker"];
+const WORKERS = ["sovirae-kokoro-worker", "sovirae-pocket-worker", "sovirae-native-host"];
 const BUNDLE = resolve("target/windows-bundle");
 const CACHE = resolve("target/download-cache");
 const HOST_WINDOWS = process.platform === "win32";

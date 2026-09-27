@@ -164,14 +164,7 @@ function install() {
 
 function test() {
   step("Running tests");
-  if (HOST === "windows") {
-    // The Chrome native host is ported in a later phase
-    // (spec/steps/14-windows-support.md).
-    run("cargo", ["test", "--workspace", "--exclude", "sovirae-native-host"]);
-    run("node", ["--test", "ext/tests/*.test.js"]);
-  } else {
-    run("npm", ["test"]);
-  }
+  run("npm", ["test"]);
 }
 
 function buildMac() {

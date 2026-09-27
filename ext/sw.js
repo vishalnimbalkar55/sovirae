@@ -203,9 +203,9 @@ function statusSnapshot() {
 // ---- Settings --------------------------------------------------------------------------
 
 async function defaults() {
-  const { os } = await chrome.runtime.getPlatformInfo();
-  // Option on macOS, Ctrl elsewhere (spec §12.3).
-  return { enabled: true, trigger: os === 'mac' ? 'alt' : 'control', holdMs: 450, disabledOrigins: [] };
+  // Option on macOS, Alt elsewhere; the content script keeps Windows from
+  // treating the Alt release as "focus the browser menu" (spec §12.3).
+  return { enabled: true, trigger: 'alt', holdMs: 450, disabledOrigins: [] };
 }
 
 async function getSettings() {

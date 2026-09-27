@@ -5,7 +5,7 @@ let isMac = false;
 
 async function defaults() {
   isMac = (await chrome.runtime.getPlatformInfo()).os === 'mac';
-  return { enabled: true, trigger: isMac ? 'alt' : 'control', holdMs: 450, disabledOrigins: [] };
+  return { enabled: true, trigger: 'alt', holdMs: 450, disabledOrigins: [] };
 }
 
 function flashSaved() {
