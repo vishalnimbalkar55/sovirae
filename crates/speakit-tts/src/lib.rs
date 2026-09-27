@@ -14,6 +14,8 @@ pub mod kokoro;
 pub mod macos_say;
 pub mod pocket;
 pub mod resample;
+#[cfg(windows)]
+pub mod windows_speech;
 mod worker;
 
 #[derive(Debug, Error)]
@@ -221,10 +223,39 @@ pub fn system_engine() -> Box<dyn Engine> {
     {
         Box::new(macos_say::SayEngine::new())
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(windows)]
+    {
+        Box::new(windows_speech::WindowsEngine::new())
+    }
+    #[cfg(not(any(target_os = "macos", windows)))]
     {
         Box::new(NoEngine)
     }
+}
+
+/// Decodes a WAV stream to mono float PCM at its own sample rate.
+#[allow(dead_code)] // used by the platform system engines
+pub(crate) fn pcm_from_wav<R: std::io::Read>(source: R) -> Result<Pcm, TtsError> {
+    let reader = hound::WavReader::new(source).map_err(|e| TtsError::Engine(e.to_string()))?;
+    let spec = reader.spec();
+    let channels = spec.channels.max(1) as usize;
+    let interleaved: Vec<f32> = match spec.sample_format {
+        hound::SampleFormat::Float => reader.into_samples::<f32>().filter_map(Result::ok).collect(),
+        hound::SampleFormat::Int => {
+            let scale = 1.0 / (1i64 << (spec.bits_per_sample - 1)) as f32;
+            reader
+                .into_samples::<i32>()
+                .filter_map(Result::ok)
+                .map(|s| s as f32 * scale)
+                .collect()
+        }
+    };
+    let samples = if channels == 1 {
+        interleaved
+    } else {
+        interleaved.chunks(channels).map(|f| f.iter().sum::<f32>() / channels as f32).collect()
+    };
+    Ok(Pcm { samples, sample_rate: spec.sample_rate })
 }
 
 pub struct NoEngine;

@@ -34,3 +34,16 @@ speakit-models.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-app-kit = { version = "0.3", features = ["NSWindow", "NSResponder"] }
+
+[target.'cfg(windows)'.dependencies]
+# AF_UNIX sockets for the Chrome bridge (Windows 10 1803+).
+uds_windows = "1.1"
+# Same version Tauri uses, so HWND types match.
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Networking_WinSock",
+    "Win32_Security",
+    "Win32_System_IO",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+] }

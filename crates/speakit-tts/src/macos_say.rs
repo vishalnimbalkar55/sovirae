@@ -197,26 +197,8 @@ impl Engine for SayEngine {
 }
 
 fn read_wav(path: &PathBuf) -> Result<Pcm, TtsError> {
-    let reader = hound::WavReader::open(path).map_err(|e| TtsError::Engine(e.to_string()))?;
-    let spec = reader.spec();
-    let channels = spec.channels.max(1) as usize;
-    let interleaved: Vec<f32> = match spec.sample_format {
-        hound::SampleFormat::Float => reader.into_samples::<f32>().filter_map(Result::ok).collect(),
-        hound::SampleFormat::Int => {
-            let scale = 1.0 / (1i64 << (spec.bits_per_sample - 1)) as f32;
-            reader
-                .into_samples::<i32>()
-                .filter_map(Result::ok)
-                .map(|s| s as f32 * scale)
-                .collect()
-        }
-    };
-    let samples = if channels == 1 {
-        interleaved
-    } else {
-        interleaved.chunks(channels).map(|f| f.iter().sum::<f32>() / channels as f32).collect()
-    };
-    Ok(Pcm { samples, sample_rate: spec.sample_rate })
+    let file = std::fs::File::open(path).map_err(|e| TtsError::Engine(e.to_string()))?;
+    crate::pcm_from_wav(std::io::BufReader::new(file))
 }
 
 #[cfg(test)]

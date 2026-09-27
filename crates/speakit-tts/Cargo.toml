@@ -17,3 +17,15 @@ speakit-models.workspace = true
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-avf-audio = { version = "0.3", features = ["AVSpeechSynthesis"] }
 objc2-foundation = { version = "0.3", features = ["NSArray", "NSString"] }
+
+[target.'cfg(windows)'.dependencies]
+# WinRT speech (the built-in Windows voices). Same version Tauri uses.
+windows = { version = "0.61", features = [
+    "Foundation",
+    "Foundation_Collections",
+    "Media_Core",
+    "Media_SpeechSynthesis",
+    "Storage_Streams",
+    "Win32_System_Com",
+] }
+windows-future = { version = "0.2", default-features = false }

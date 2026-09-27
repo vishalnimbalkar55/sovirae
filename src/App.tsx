@@ -23,6 +23,10 @@ export default function App() {
   const app = useAppState();
   const [screen, setScreen] = useState<ScreenId>("read");
   useTheme(app.settings?.theme);
+  // Lets CSS drop the macOS title-bar spacing on Windows and Linux.
+  useEffect(() => {
+    if (app.init?.platform) document.documentElement.dataset.platform = app.init.platform;
+  }, [app.init?.platform]);
 
   useEffect(
     () =>

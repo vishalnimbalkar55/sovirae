@@ -9,10 +9,11 @@
     "typecheck": "tsc --noEmit",
     "tauri": "tauri",
     "app:dev": "tauri dev",
-    "app:build": "tauri build && bash scripts/collect-build.sh",
+    "app:build": "node scripts/build.mjs --skip-tests --no-install",
     "test": "cargo test --workspace && node --test ext/tests/*.test.js",
-    "build:all": "bash scripts/build.sh",
-    "build:collect": "bash scripts/collect-build.sh"
+    "build:all": "node scripts/build.mjs",
+    "build:collect": "node scripts/build.mjs --collect",
+    "setup:windows-cross": "bash scripts/setup-windows-cross.sh"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",

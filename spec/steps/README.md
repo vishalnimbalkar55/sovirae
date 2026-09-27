@@ -18,3 +18,4 @@
 - [ ] [Step 11: Deliver long-press picker and copy controls](11-deliver-long-press-picker-and-copy-controls.md)
 - [ ] [Step 12: Verify and package](12-verify-and-package.md)
 - [ ] [Step 13: Optional subsequent improvements](13-optional-subsequent-improvements.md)
+- [ ] [Step 14: Windows support](14-windows-support.md)

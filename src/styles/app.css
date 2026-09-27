@@ -498,3 +498,8 @@
   .row, .model-row { flex-wrap: wrap; }
   .row-control { flex-wrap: wrap; max-width: 100%; }
 }
+
+/* Windows and Linux draw a native title bar, so the space reserved for the
+   macOS traffic lights and overlay title bar is not needed. */
+:root:is([data-platform="windows"], [data-platform="linux"]) .traffic,
+:root:is([data-platform="windows"], [data-platform="linux"]) .titlebar-space { height: 10px; }

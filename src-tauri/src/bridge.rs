@@ -1,12 +1,13 @@
 //! Chrome bridge (spec §13): native-host registration, the user-owned Unix
 //! socket the host connects to, pairing, and the request/state protocol.
+//! Windows 10+ has AF_UNIX sockets too; `uds_windows` exposes them with the
+//! same API, so only permissions and the peer check differ per OS.
 //!
 //! Chrome → extension worker → `sovirae-native-host` (stdio) → this socket.
 //! The host only relays; every decision is made here.
 
 use std::collections::{HashMap, HashSet};
-use std::os::unix::fs::PermissionsExt;
-use std::os::unix::io::AsRawFd;
+#[cfg(unix)]
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -21,6 +22,8 @@ use speakit_protocol::{
 };
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+#[cfg(windows)]
+use uds_windows::{UnixListener, UnixStream};
 
 use crate::controller::Command;
 use crate::AppState;
@@ -121,7 +124,7 @@ fn manifest_path(root: &Path) -> PathBuf {
 pub fn host_bin() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
-    let name = "sovirae-native-host";
+    let name = if cfg!(windows) { "sovirae-native-host.exe" } else { "sovirae-native-host" };
     [dir.join(name), dir.join("../release").join(name), dir.join("../debug").join(name)]
         .into_iter()
         .find(|p| p.is_file())
@@ -276,17 +279,30 @@ fn bind(path: &Path) -> std::io::Result<UnixListener> {
         std::fs::remove_file(path)?;
     }
     let listener = UnixListener::bind(path)?;
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
+    }
+    // Windows: the socket lives in %LOCALAPPDATA%, whose ACL already limits
+    // it to this user (plus SYSTEM and administrators).
     Ok(listener)
 }
 
 /// Accepts only processes running as this user.
+#[cfg(unix)]
 fn same_user(stream: &UnixStream) -> bool {
+    use std::os::unix::io::AsRawFd;
     let mut uid: libc::uid_t = 0;
     let mut gid: libc::gid_t = 0;
     // SAFETY: valid socket fd and out-pointers.
     let rc = unsafe { libc::getpeereid(stream.as_raw_fd(), &mut uid, &mut gid) };
     rc == 0 && uid == unsafe { libc::getuid() }
+}
+
+#[cfg(windows)]
+fn same_user(stream: &UnixStream) -> bool {
+    crate::platform::windows::peer_is_current_user(stream)
 }
 
 fn serve(app: AppHandle, stream: UnixStream) {

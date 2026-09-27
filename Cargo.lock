@@ -4517,6 +4517,8 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-global-shortcut",
  "tauri-plugin-single-instance",
+ "uds_windows",
+ "windows 0.61.3",
 ]
 
 [[package]]
@@ -4577,6 +4579,7 @@ dependencies = [
  "sha2 0.11.0",
  "thiserror 2.0.21",
  "ureq",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -4600,6 +4603,8 @@ dependencies = [
  "serde_json",
  "speakit-models",
  "thiserror 2.0.21",
+ "windows 0.61.3",
+ "windows-future 0.2.1",
 ]
 
 [[package]]

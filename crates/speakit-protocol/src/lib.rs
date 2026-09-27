@@ -90,6 +90,16 @@ pub fn extension_id(origin: &str) -> Option<&str> {
 }
 
 /// Where the app listens: a socket inside the user's private app-data folder.
+#[cfg(windows)]
+pub fn socket_path() -> Option<PathBuf> {
+    // %LOCALAPPDATA% is per-user and not roamed; its ACL admits only this
+    // user, SYSTEM, and administrators.
+    let local = std::env::var_os("LOCALAPPDATA")?;
+    Some(PathBuf::from(local).join("com.sovirae.desktop").join("bridge.sock"))
+}
+
+/// Where the app listens: a socket inside the user's private app-data folder.
+#[cfg(not(windows))]
 pub fn socket_path() -> Option<PathBuf> {
     let home = std::env::var_os("HOME")?;
     let base = PathBuf::from(home);

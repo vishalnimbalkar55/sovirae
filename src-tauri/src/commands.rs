@@ -276,7 +276,7 @@ pub fn display_binding(binding: &str) -> String {
     let mac = cfg!(target_os = "macos");
     let label = |p: &str| -> String {
         match p.to_ascii_lowercase().as_str() {
-            "command" | "cmd" | "super" => if mac { "⌘".into() } else { "Super".into() },
+            "command" | "cmd" | "super" => if mac { "⌘".into() } else if cfg!(windows) { "Win".into() } else { "Super".into() },
             "alt" | "option" => if mac { "⌥".into() } else { "Alt".into() },
             "control" | "ctrl" => if mac { "⌃".into() } else { "Ctrl".into() },
             "shift" => if mac { "⇧".into() } else { "Shift".into() },

@@ -221,7 +221,7 @@ fn system_view(app: &AppHandle) -> ModelView {
         .voices()
         .map(|v| v.iter().filter(|v| v.model == SYSTEM_MODEL).count())
         .unwrap_or(0);
-    let os = if cfg!(target_os = "macos") { "macOS" } else { "this system" };
+    let os = if cfg!(target_os = "macos") { "macOS" } else if cfg!(windows) { "Windows" } else { "this system" };
     ModelView {
         id: SYSTEM_MODEL.into(),
         name: "System voices".into(),

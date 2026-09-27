@@ -10,30 +10,60 @@ step files there.
 ## Build the complete project
 
 One command checks prerequisites, installs packages, runs every test, and
-builds the app, installer, and Chrome extension:
+builds the app, installer, and Chrome extension for every platform this
+computer can build. It works the same on macOS and Windows:
 
 ```bash
 npm run build:all
 ```
 
-Everything ends up in `build/` (cleared and refilled on each build):
+Everything ends up in `build/` (each platform folder is cleared and refilled):
 
 ```
-build/app/Sovirae.app                 the app
-build/app/Sovirae_0.1.0_aarch64.dmg   the installer
-build/ext/                            the Chrome extension, for Load unpacked
+build/macos/Sovirae.app                    the macOS app            (built on a Mac)
+build/macos/Sovirae_0.1.0_aarch64.dmg      the macOS installer
+build/windows/Sovirae_0.1.0_x64-setup.exe  the Windows installer    (built on Windows, or on a
+                                           Mac set up for cross-builds)
+build/ext/                                 the Chrome extension, for Load unpacked
 ```
 
-`npm run app:build` fills `build/` too. To copy the last build into `build/`
-again without rebuilding (for example after deleting the folder):
+Options: `-- --skip-tests`, `-- --no-install` (reuse `node_modules`), and
+`-- --mac` / `-- --windows` to build one platform, e.g.
+`npm run build:all -- --windows`. `npm run app:build` is the quick form
+(no tests, no reinstall). To copy the last builds into `build/` again without
+rebuilding:
 
 ```bash
 npm run build:collect
 ```
 
-Skip the tests with `bash scripts/build.sh --skip-tests`. A full build takes
-about 3 minutes from a warm cache (longer the first time, while Rust and ONNX
-Runtime download).
+A full macOS build takes about 3 minutes from a warm cache (longer the first
+time, while Rust and ONNX Runtime download).
+
+### Windows installer from a Mac (optional, experimental)
+
+A Mac can also cross-build the Windows installer. Set it up once; the script
+asks you to accept Microsoft's license for the Windows SDK that cargo-xwin
+downloads, then installs NSIS, LLVM, cargo-xwin, and the Rust target:
+
+```bash
+npm run setup:windows-cross
+```
+
+After that `npm run build:all` fills both `build/macos/` and `build/windows/`.
+Without it, the Mac build skips Windows with a warning. Test cross-built
+installers on a Windows PC.
+
+### Prerequisites on Windows (Windows 10 1803+ or 11, x64)
+
+| Tool | Install |
+|---|---|
+| Visual Studio 2022 Build Tools | "Desktop development with C++" workload |
+| Rust (stable, MSVC) | from rustup.rs (`rustup default stable-msvc`) |
+| Node.js 22+ | from nodejs.org |
+
+Windows support is being ported in phases; see
+[spec/steps/14-windows-support.md](spec/steps/14-windows-support.md).
 
 ### Prerequisites (macOS 13 or later; built and tested on Apple Silicon)
 
@@ -69,6 +99,7 @@ share it, sign and notarize with an Apple Developer ID.
 | Task | Command |
 |---|---|
 | Build everything (tests + app + installer + extension) | `npm run build:all` |
+| Set up a Mac to also build the Windows installer (once) | `npm run setup:windows-cross` |
 | Build without tests | `npm run app:build` |
 | Copy the last build into `build/` again (no rebuild) | `npm run build:collect` |
 | Run in development (hot reload) | `npm run app:dev` |
