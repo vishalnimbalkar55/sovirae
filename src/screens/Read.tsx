@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
-import { estimateLabel, keyParts, MAX_TEXT_UTF16, voiceLabel, wordCount } from "../lib/format";
-import { Alert, Chevron, Clipboard, Play, VoiceIcon } from "../lib/icons";
+import { estimateLabel, keyParts, MAX_TEXT_UTF16, sourceLabel, voiceLabel, wordCount } from "../lib/format";
+import { Alert, Chevron, Clipboard, Pause, Play, VoiceIcon, Volume } from "../lib/icons";
+import { Slider } from "../lib/ui";
 import { ACTIVE } from "../lib/types";
 import type { AppModel } from "../App";
 
@@ -66,7 +67,7 @@ export default function ReadScreen({ app, onChangeVoice }: { app: AppModel; onCh
     <section className="screen read" aria-labelledby="read-title">
       <header className="screen-head">
         <h1 id="read-title">Read</h1>
-        <p>Choose text to read aloud. Speech is generated on this {app.init?.platform === "macos" ? "Mac" : "computer"}.</p>
+        <p>Paste or type text to hear it read aloud. Speech is generated on this {app.init?.platform === "macos" ? "Mac" : "computer"}.</p>
       </header>
 
       {notice && (
@@ -85,13 +86,15 @@ export default function ReadScreen({ app, onChangeVoice }: { app: AppModel; onCh
         </div>
       )}
 
+      <div className="listening-workspace">
       <div className={`sheet ${empty ? "is-empty" : ""}`}>
+        <div className="sheet-heading"><span>Your text</span><span className="sheet-private"><span /> Only on your device</span></div>
         <label htmlFor="read-text" className="visually-hidden">Text to read aloud</label>
         <textarea
           id="read-text"
           ref={area}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => { setText(e.target.value); setPasteError(null); }}
           spellCheck={false}
           style={{
             fontSize: settings.readingFontSize,
@@ -103,7 +106,9 @@ export default function ReadScreen({ app, onChangeVoice }: { app: AppModel; onCh
         />
         {empty && (
           <div className="sheet-empty">
-            <p className="sheet-empty-title">Paste text here to hear it read aloud</p>
+            
+            <p className="sheet-empty-title">Good listening starts here.</p>
+            <p className="sheet-empty-description">Paste something you’ve been meaning to read, or just start typing.</p>
             {clipboardChord && (
               <p className="sheet-empty-hint">
                 Or copy text in any app and press
@@ -115,12 +120,14 @@ export default function ReadScreen({ app, onChangeVoice }: { app: AppModel; onCh
             <button className="btn" onClick={paste}>
               <Clipboard /> Paste from clipboard
             </button>
+            <button className="sample-link" onClick={() => setText("There is a particular kind of freedom in doing one thing at a time. Close the extra tabs. Let your shoulders drop. For the next few minutes, you don’t need to keep up with anything. Just listen.\n\nSometimes a new perspective is as simple as hearing familiar words in a different voice.")}>Try a little inspiration <span aria-hidden="true">↗</span></button>
             {pasteError && <p className="field-error" role="status">{pasteError}</p>}
           </div>
         )}
 
         <div className="sheet-bar">
           <div className="counts" aria-live="polite">
+            {empty && <span>Ready when you are</span>}
             {!empty && (
               <>
                 <span className="count-strong">{words.toLocaleString()} {words === 1 ? "word" : "words"}</span>
@@ -128,31 +135,39 @@ export default function ReadScreen({ app, onChangeVoice }: { app: AppModel; onCh
               </>
             )}
           </div>
+          {!empty && pasteError && <p className="field-error bar-error" role="status">{pasteError}</p>}
           <div className="bar-actions">
             {!empty && (
               <>
-                <button className="btn ghost" onClick={() => setText("")}>Clear</button>
+                <button className="btn ghost" onClick={() => { setText(""); setPasteError(null); }}>Clear</button>
                 <button className="btn" onClick={paste}>
                   <Clipboard /> Paste
                 </button>
               </>
             )}
-            <button className="btn primary" onClick={() => listen()} disabled={empty} title="⌘ Return">
-              <Play /> {reading ? "Read this instead" : "Listen"}
-            </button>
+
           </div>
         </div>
       </div>
-      {!empty && pasteError && <p className="field-error" role="status">{pasteError}</p>}
 
-      <button className="voice-chip" onClick={onChangeVoice}>
-        <span className="voice-chip-icon"><VoiceIcon /></span>
-        <span className="voice-chip-text">
-          <span className="voice-chip-name">{voice}</span>
-          <span className="voice-chip-meta">{engine} on {snapshot.device}</span>
-        </span>
-        <span className="voice-chip-action">Change voice <Chevron /></span>
-      </button>
+      <aside className="listening-panel" aria-label="Listening controls">
+        <button className="voice-chip" onClick={onChangeVoice}>
+          <span className="voice-chip-icon"><VoiceIcon /></span>
+          <span className="voice-chip-text"><span className="voice-chip-name">{voice}</span><span className="voice-chip-meta">{engine}</span></span>
+          <Chevron />
+        </button>
+        <div className="studio-controls">
+          <div className="studio-control"><label htmlFor="studio-rate">Playback speed</label><span>{settings.rate.toFixed(1)}×</span><Slider id="studio-rate" value={settings.rate} min={0.5} max={2} step={0.1} onChange={(rate) => { app.update({ rate }); if (reading) api.control("rate", rate); }} /></div>
+          <div className="studio-control"><label htmlFor="studio-volume"><Volume /> Volume</label><span>{Math.round(settings.volume * 100)}%</span><Slider id="studio-volume" value={settings.volume} min={0} max={1} step={0.05} onChange={(volume) => { app.update({ volume }); if (reading) api.control("volume", volume); }} /></div>
+        </div>
+        <div className="studio-action">
+          <button className="listen-orb" onClick={() => reading ? api.control("toggle") : listen()} disabled={!reading && empty} aria-label={reading ? snapshot.status === "paused" ? "Resume reading" : "Pause reading" : "Listen"}>{reading && snapshot.status !== "paused" ? <Pause /> : <Play />}</button>
+          <strong>{reading ? snapshot.status === "paused" ? "Resume listening" : "Pause listening" : "Start listening"}</strong>
+          {reading && !empty ? <button className="studio-replace" onClick={() => listen()}>Read this text instead</button> : <span>{reading ? `From ${sourceLabel(snapshot.source?.kind, snapshot.source?.displayName)}` : empty ? "Add your text to begin" : `or press ${app.init?.platform === "macos" ? "⌘ Return" : "Ctrl+Enter"}`}</span>}
+        </div>
+
+      </aside>
+      </div>
     </section>
   );
 }

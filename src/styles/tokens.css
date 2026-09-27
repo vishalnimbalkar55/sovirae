@@ -1,44 +1,45 @@
-/* Sovirae design tokens. Brand colours come from the branding spec §5.2;
-   everything else is derived. Light is the default; dark follows the
-   system unless the user picks a theme (data-theme on <html>). */
+/* Paper and ink: warm paper surfaces, near-black ink, one vermilion accent.
+   Light is the default; dark follows the system or the chosen theme. */
 :root {
   /* Brand */
-  --canvas: #f7f6f3;
-  --surface: #ffffff;
-  --ink: #1a1a1a;
-  --ink-2: #6b6862;
-  --violet: #7c5cff; /* signature: waveform, focus, selection */
-  --action: #6242d6; /* primary actions and small accent text */
+  --canvas: #f4f0e8;
+  --surface: #fffdf8;
+  --ink: #1d1b18;
+  --ink-2: #6b6459;
+  --accent: #c2410c; /* waveform, focus, selection, active nav */
+  --action: #a93a0b; /* primary actions and small accent text */
   --on-action: #ffffff;
+  --accent-ink: #8f310a; /* text on --accent-soft */
 
   /* Derived */
-  --sidebar: #efede8;
-  --raised: #fbfaf8;
-  --ink-3: #8f8b84; /* decorative/tertiary only, never body text */
-  --hairline: rgba(38, 32, 20, 0.09);
-  --hairline-strong: rgba(38, 32, 20, 0.14);
-  --control-border: #8a867f; /* ≥ 3:1 on canvas and surface */
-  --fill: rgba(38, 32, 20, 0.05);
-  --fill-hover: rgba(38, 32, 20, 0.08);
-  --violet-soft: rgba(124, 92, 255, 0.1);
-  --violet-softer: rgba(124, 92, 255, 0.06);
-  --track: #e2dfd8;
-  --success: #2e7d5b;
-  --error: #b63229;
-  --error-soft: rgba(182, 50, 41, 0.07);
-  --wave-dim: rgba(107, 104, 98, 0.24);
-  --wave-played: #7c5cff;
-  --wave-ahead: rgba(124, 92, 255, 0.34);
+  --sidebar: #ece6da;
+  --raised: #faf7f0;
+  --ink-3: #8d857a; /* decorative/tertiary only, never body text */
+  --hairline: rgba(56, 42, 20, 0.1);
+  --hairline-strong: rgba(56, 42, 20, 0.16);
+  --control-border: #8c8374; /* ≥ 3:1 on canvas and surface */
+  --fill: rgba(56, 42, 20, 0.05);
+  --fill-hover: rgba(56, 42, 20, 0.08);
+  --accent-soft: rgba(194, 65, 12, 0.12);
+  --accent-softer: rgba(194, 65, 12, 0.07);
+  --track: #e3dccf;
+  --success: #3f7a4f;
+  --error: #b3261e;
+  --error-soft: rgba(179, 38, 30, 0.07);
+  --wave-dim: rgba(107, 100, 89, 0.26);
+  --wave-played: #c2410c;
+  --wave-ahead: rgba(194, 65, 12, 0.34);
 
-  --shadow-xs: 0 1px 1px rgba(38, 32, 20, 0.05);
-  --shadow-sm: 0 1px 2px rgba(38, 32, 20, 0.06), 0 1px 1px rgba(38, 32, 20, 0.04);
-  --shadow-sheet: 0 1px 2px rgba(38, 32, 20, 0.05), 0 12px 32px -12px rgba(38, 32, 20, 0.14);
+  --shadow-xs: 0 1px 1px rgba(56, 42, 20, 0.05);
+  --shadow-sm: 0 1px 2px rgba(56, 42, 20, 0.06), 0 1px 1px rgba(56, 42, 20, 0.04);
+  --shadow-sheet: 0 1px 2px rgba(56, 42, 20, 0.05), 0 16px 40px -20px rgba(56, 42, 20, 0.18);
   --shadow-thumb: 0 1px 3px rgba(0, 0, 0, 0.22), 0 0 0 0.5px rgba(0, 0, 0, 0.12);
-  --shadow-pop: 0 12px 32px rgba(38, 32, 20, 0.16), 0 2px 6px rgba(38, 32, 20, 0.08);
+  --shadow-pop: 0 12px 32px rgba(56, 42, 20, 0.16), 0 2px 6px rgba(56, 42, 20, 0.08);
 
   --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   --font-read-serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
   --font-read-sans: var(--font-ui);
+  --font-display: var(--font-read-serif); /* screen titles */
 
   --r-sheet: 16px;
   --r-panel: 14px;
@@ -51,69 +52,71 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --canvas: #17181c;
-    --surface: #222329;
-    --ink: #f1f0f4;
-    --ink-2: #b8b6c2;
-    --violet: #a28bff;
-    --action: #b5a2ff;
-    --on-action: #17181c;
-    --sidebar: #121317;
-    --raised: #292a31;
-    --ink-3: #85838f;
-    --hairline: rgba(255, 255, 255, 0.07);
-    --hairline-strong: rgba(255, 255, 255, 0.11);
-    --control-border: #737585;
-    --fill: rgba(255, 255, 255, 0.05);
-    --fill-hover: rgba(255, 255, 255, 0.08);
-    --violet-soft: rgba(162, 139, 255, 0.14);
-    --violet-softer: rgba(162, 139, 255, 0.08);
-    --track: #3a3b44;
-    --success: #7acba7;
-    --error: #ff9c91;
-    --error-soft: rgba(255, 156, 145, 0.09);
-    --wave-dim: rgba(184, 182, 194, 0.2);
-    --wave-played: #a28bff;
-    --wave-ahead: rgba(162, 139, 255, 0.38);
+    --canvas: #191816;
+    --surface: #22201d;
+    --ink: #f1ece2;
+    --ink-2: #a8a093;
+    --accent: #f0875a;
+    --action: #f0875a;
+    --on-action: #1d1b18;
+    --accent-ink: #ffc6aa;
+    --sidebar: #131211;
+    --raised: #2a2825;
+    --ink-3: #8a8377;
+    --hairline: rgba(255, 240, 220, 0.08);
+    --hairline-strong: rgba(255, 240, 220, 0.13);
+    --control-border: #7a7368;
+    --fill: rgba(255, 240, 220, 0.05);
+    --fill-hover: rgba(255, 240, 220, 0.08);
+    --accent-soft: rgba(240, 135, 90, 0.16);
+    --accent-softer: rgba(240, 135, 90, 0.09);
+    --track: #3a3631;
+    --success: #86c79a;
+    --error: #ff9c8f;
+    --error-soft: rgba(255, 156, 143, 0.09);
+    --wave-dim: rgba(168, 160, 147, 0.22);
+    --wave-played: #f0875a;
+    --wave-ahead: rgba(240, 135, 90, 0.38);
     --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.3);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-    --shadow-sheet: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 16px 40px -16px rgba(0, 0, 0, 0.6);
+    --shadow-sheet: 0 0 0 1px rgba(255, 240, 220, 0.05), 0 16px 40px -16px rgba(0, 0, 0, 0.6);
     --shadow-thumb: 0 1px 3px rgba(0, 0, 0, 0.5);
-    --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 240, 220, 0.06);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --canvas: #17181c;
-  --surface: #222329;
-  --ink: #f1f0f4;
-  --ink-2: #b8b6c2;
-  --violet: #a28bff;
-  --action: #b5a2ff;
-  --on-action: #17181c;
-  --sidebar: #121317;
-  --raised: #292a31;
-  --ink-3: #85838f;
-  --hairline: rgba(255, 255, 255, 0.07);
-  --hairline-strong: rgba(255, 255, 255, 0.11);
-  --control-border: #737585;
-  --fill: rgba(255, 255, 255, 0.05);
-  --fill-hover: rgba(255, 255, 255, 0.08);
-  --violet-soft: rgba(162, 139, 255, 0.14);
-  --violet-softer: rgba(162, 139, 255, 0.08);
-  --track: #3a3b44;
-  --success: #7acba7;
-  --error: #ff9c91;
-  --error-soft: rgba(255, 156, 145, 0.09);
-  --wave-dim: rgba(184, 182, 194, 0.2);
-  --wave-played: #a28bff;
-  --wave-ahead: rgba(162, 139, 255, 0.38);
+  --canvas: #191816;
+  --surface: #22201d;
+  --ink: #f1ece2;
+  --ink-2: #a8a093;
+  --accent: #f0875a;
+  --action: #f0875a;
+  --on-action: #1d1b18;
+  --accent-ink: #ffc6aa;
+  --sidebar: #131211;
+  --raised: #2a2825;
+  --ink-3: #8a8377;
+  --hairline: rgba(255, 240, 220, 0.08);
+  --hairline-strong: rgba(255, 240, 220, 0.13);
+  --control-border: #7a7368;
+  --fill: rgba(255, 240, 220, 0.05);
+  --fill-hover: rgba(255, 240, 220, 0.08);
+  --accent-soft: rgba(240, 135, 90, 0.16);
+  --accent-softer: rgba(240, 135, 90, 0.09);
+  --track: #3a3631;
+  --success: #86c79a;
+  --error: #ff9c8f;
+  --error-soft: rgba(255, 156, 143, 0.09);
+  --wave-dim: rgba(168, 160, 147, 0.22);
+  --wave-played: #f0875a;
+  --wave-ahead: rgba(240, 135, 90, 0.38);
   --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.3);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-sheet: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 16px 40px -16px rgba(0, 0, 0, 0.6);
+  --shadow-sheet: 0 0 0 1px rgba(255, 240, 220, 0.05), 0 16px 40px -16px rgba(0, 0, 0, 0.6);
   --shadow-thumb: 0 1px 3px rgba(0, 0, 0, 0.5);
-  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 240, 220, 0.06);
   color-scheme: dark;
 }
 
@@ -148,11 +151,11 @@ button { -webkit-tap-highlight-color: transparent; }
 
 :focus { outline: none; }
 :focus-visible {
-  outline: 2px solid var(--violet);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-::selection { background: var(--violet-soft); }
+::selection { background: var(--accent-soft); }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb {
@@ -201,7 +204,7 @@ button { -webkit-tap-highlight-color: transparent; }
   background: var(--action);
   border-color: transparent;
   color: var(--on-action);
-  box-shadow: 0 1px 2px rgba(60, 30, 160, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  box-shadow: none;
 }
 .btn.primary:hover:not(:disabled) { background: var(--action); filter: brightness(1.07); border-color: transparent; }
 .btn.primary:disabled { opacity: 0.35; }
@@ -276,7 +279,7 @@ kbd {
   transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .select:hover:not(:disabled) { border-color: var(--ink-2); }
-.select:focus-visible { outline: none; border-color: var(--violet); box-shadow: 0 0 0 3px var(--violet-soft); }
+.select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .select:disabled { opacity: 0.55; cursor: default; }
 .select.compact { height: 34px; width: auto; font-size: 13px; }
 
@@ -308,7 +311,7 @@ kbd {
 }
 .slider:hover::-webkit-slider-thumb { transform: scale(1.08); }
 .slider:focus-visible { outline: none; }
-.slider:focus-visible::-webkit-slider-thumb { box-shadow: var(--shadow-thumb), 0 0 0 3px var(--violet-soft), 0 0 0 5px var(--violet); }
+.slider:focus-visible::-webkit-slider-thumb { box-shadow: var(--shadow-thumb), 0 0 0 3px var(--accent-soft), 0 0 0 5px var(--accent); }
 
 /* ── Switch ──────────────────────────────────────────── */
 .switch {
@@ -387,5 +390,5 @@ kbd {
 }
 .pill.ok { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
 .pill.warn { background: var(--error-soft); color: var(--error); }
-.pill.violet { background: var(--violet-soft); color: var(--action); }
+.pill.accent { background: var(--accent-soft); color: var(--action); }
 .pill .led { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }

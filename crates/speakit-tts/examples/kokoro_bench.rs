@@ -41,7 +41,7 @@ fn main() {
         .expect("install");
     println!("installed {} ({}) in {:.1?}", model.name, artifact, t.elapsed());
 
-    let worker_bin = std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().join("speakit-kokoro-worker");
+    let worker_bin = std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().join("sovirae-kokoro-worker");
     let voices = model
         .voices
         .iter()

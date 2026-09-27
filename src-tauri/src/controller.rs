@@ -194,7 +194,7 @@ pub fn spawn<H: Host>(engine: Arc<dyn Engine>, config: Config, host: H) -> Contr
     let synth_engine = engine.clone();
     let synth_tx = tx.clone();
     std::thread::Builder::new()
-        .name("speakit-synth".into())
+        .name("sovirae-synth".into())
         .spawn(move || {
             for job in job_rx {
                 let started = Instant::now();
@@ -236,7 +236,7 @@ pub fn spawn<H: Host>(engine: Arc<dyn Engine>, config: Config, host: H) -> Contr
         slow_segments: 0,
     };
     std::thread::Builder::new()
-        .name("speakit-session".into())
+        .name("sovirae-session".into())
         .spawn(move || worker.run(rx))
         .expect("spawn session thread");
     Controller { tx }
@@ -1130,7 +1130,7 @@ mod tests {
         let root = std::path::PathBuf::from(std::env::var("HOME").unwrap())
             .join("Library/Application Support/com.sovirae.desktop/models");
         let installed = Store::new(root).installed(model).expect("Kokoro installed");
-        let worker_bin = std::env::current_dir().unwrap().join("../target/release/speakit-kokoro-worker");
+        let worker_bin = std::env::current_dir().unwrap().join("../target/release/sovirae-kokoro-worker");
         let voices = model.voices.iter().map(|v| KokoroVoice {
             id: v.id.clone(), label: v.label.clone(), language: v.language.clone(), gender: v.gender.clone(), g2p: v.g2p.clone(), approximate_pronunciation: v.pronunciation.is_some(), file: installed.voice_file(&v.id),
         }).collect();
@@ -1169,7 +1169,7 @@ mod tests {
         let root = std::path::PathBuf::from(std::env::var("HOME").unwrap())
             .join("Library/Application Support/com.sovirae.desktop/models");
         let installed = Store::new(root).installed(model).expect("Pocket TTS English installed");
-        let worker_bin = std::env::current_dir().unwrap().join("../target/release/speakit-pocket-worker");
+        let worker_bin = std::env::current_dir().unwrap().join("../target/release/sovirae-pocket-worker");
         let voices = model.voices.iter().map(|v| PocketVoice {
             id: v.id.clone(), label: v.label.clone(), language: v.language.clone(), gender: v.gender.clone(), file: installed.voice_file(&v.id),
         }).collect();

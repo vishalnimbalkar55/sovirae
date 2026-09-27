@@ -53,10 +53,10 @@ if espeak-ng is absent (the app still builds; system voices still work).
 
 | File | Role |
 |---|---|
-| `speakit` | The app: windows, player, shortcuts, menu bar icon |
-| `speakit-kokoro-worker` | Kokoro inference in its own process (ONNX Runtime built in) |
-| `speakit-pocket-worker` | Pocket TTS inference in its own process (Candle, Apple Accelerate) |
-| `speakit-native-host` | Connects Chrome to the app |
+| `sovirae` | The app: windows, player, shortcuts, menu bar icon |
+| `sovirae-kokoro-worker` | Kokoro inference in its own process (ONNX Runtime built in) |
+| `sovirae-pocket-worker` | Pocket TTS inference in its own process (Candle, Apple Accelerate) |
+| `sovirae-native-host` | Connects Chrome to the app |
 
 `build/ext/` is the Chrome extension, ready for **Load unpacked** (the app also carries a copy in `Contents/Resources/ext/`).
 Neural voice models are not bundled; download them in Sovirae › Voices.
@@ -78,7 +78,7 @@ share it, sign and notarize with an Apple Developer ID.
 Longer checks that play audio or need a downloaded model are opt-in:
 
 ```bash
-cargo test -p speakit -- --ignored          # real playback, including Kokoro and Pocket TTS
+cargo test -p sovirae -- --ignored          # real playback, including Kokoro and Pocket TTS
 python3 scripts/check-bridge.py             # Chrome bridge, 22 checks (extension must be allowed)
 cargo run --release -p speakit-tts --example kokoro_bench -- \
   "$HOME/Library/Application Support/com.sovirae.desktop/models" fp32 /tmp/kokoro-wav
@@ -112,7 +112,7 @@ kept outside the repository in
 | `crates/speakit-tts` | System voices, Kokoro and Pocket TTS engines, phonemizer, engine registry |
 | `crates/speakit-models` | Model catalog (`catalog/models.json`) and verified downloads |
 | `crates/speakit-protocol` | Chrome bridge message format |
-| `workers/speakit-kokoro-worker` | Isolated ONNX inference process |
-| `workers/speakit-pocket-worker` | Isolated Pocket TTS inference process (Rust port of Kyutai's model) |
-| `workers/speakit-native-host` | Chrome native messaging relay |
+| `workers/speakit-kokoro-worker` (`sovirae-kokoro-worker`) | Isolated ONNX inference process |
+| `workers/speakit-pocket-worker` (`sovirae-pocket-worker`) | Isolated Pocket TTS inference process (Rust port of Kyutai's model) |
+| `workers/speakit-native-host` (`sovirae-native-host`) | Chrome native messaging relay |
 | `ext/` | Chrome MV3 extension |

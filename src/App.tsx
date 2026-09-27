@@ -49,6 +49,8 @@ export default function App() {
             <li key={id}>
               <button
                 className="nav-item"
+                aria-label={label}
+                title={label}
                 aria-current={screen === id ? "page" : undefined}
                 onClick={() => setScreen(id)}
               >

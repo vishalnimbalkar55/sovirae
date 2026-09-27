@@ -43,6 +43,9 @@ export function installDevMock() {
     (cmd, args) => {
       switch (cmd) {
         case "get_state": return { settings, snapshot, platform: "macos", engine: "macos-system" };
+        case "read_clipboard_text":
+          if (params.get("clipboard") === "empty") throw "Clipboard is empty. Copy some text and try again.";
+          return SAMPLE;
         case "processor_status": return { gpuAvailable: true, fallback: params.get("gpuFallback") };
         case "get_document": return { sessionId: 3, text: SAMPLE, segments };
         case "list_voices": {

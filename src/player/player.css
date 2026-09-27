@@ -26,14 +26,14 @@ html.player-root, html.player-root body { background: transparent; overflow: hid
   height: 22px;
   padding: 0 9px 0 6px;
   border-radius: 999px;
-  background: var(--violet-soft);
+  background: var(--accent-soft);
   color: var(--ink);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.source-mark { width: 14px; height: 14px; color: var(--violet); flex: none; }
+.source-mark { width: 14px; height: 14px; color: var(--accent); flex: none; }
 .meta { color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
 .meta + .meta::before { content: ""; display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: var(--ink-3); margin: 0 7px 2px 0; }
 .status { font-weight: 600; white-space: nowrap; color: var(--action); }
@@ -88,11 +88,11 @@ html.player-root, html.player-root body { background: transparent; overflow: hid
   opacity: 0;
   cursor: pointer;
 }
-.wave:has(.wave-input:focus-visible) { outline: 2px solid var(--violet); outline-offset: 2px; border-radius: 4px; }
+.wave:has(.wave-input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
 /* Player line styles other than the waveform (lines.tsx) */
 .seek-zone { position: relative; height: 10px; display: flex; align-items: center; cursor: pointer; }
-.seek-zone:has(.wave-input:focus-visible) { outline: 2px solid var(--violet); outline-offset: 2px; border-radius: 4px; }
+.seek-zone:has(.wave-input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .hair { flex: 1; height: 2px; border-radius: 2px; background: var(--track); overflow: hidden; }
 .hair i { display: block; height: 100%; background: var(--wave-played); }
 
@@ -105,7 +105,7 @@ html.player-root, html.player-root body { background: transparent; overflow: hid
 .ticker-text { display: flex; gap: 4px; white-space: nowrap; font-size: 13.5px; font-weight: 500; transition: transform 260ms var(--ease); will-change: transform; }
 .tw { flex: none; padding: 1px 3px; border-radius: 5px; color: var(--ink-3); cursor: pointer; transition: color var(--t-fast), background var(--t-fast); }
 .tw.done { color: var(--ink); }
-.tw.now { color: var(--action); background: var(--violet-soft); }
+.tw.now { color: var(--action); background: var(--accent-soft); }
 
 .line-steps { flex: none; height: 38px; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
 .steps-caption { display: flex; align-items: baseline; gap: 10px; font-size: 12.5px; min-width: 0; }
@@ -135,5 +135,5 @@ html.player-root, html.player-root body { background: transparent; overflow: hid
 .p-reading p { margin: 0 0 0.9em; max-width: 64ch; }
 .sentence { border-radius: 4px; cursor: pointer; transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); color: var(--ink-2); }
 .sentence:hover { background: var(--fill-hover); color: var(--ink); }
-.sentence.current { color: var(--ink); background: var(--violet-soft); box-shadow: 0 0 0 2px var(--violet-soft); }
+.sentence.current { color: var(--ink); background: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent-soft); }
 .return { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); box-shadow: var(--shadow-pop); }

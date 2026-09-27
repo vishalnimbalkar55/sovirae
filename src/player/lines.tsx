@@ -178,13 +178,13 @@ export function LiveMeter(props: LineProps) {
   const { timeline, durationMs, playing } = props;
   const draw = useCallback<Draw>(
     (ctx, w, h, pos) => {
-      const violet = token("--wave-played");
+      const accent = token("--wave-played");
       const mid = h / 2;
       const bw = 3;
       const gap = 2.5;
       METER_PROFILE.forEach((p, i) => {
         const lv = playing ? Math.max(0.14, liveLevel(timeline, pos - i * 45) * p) : 0.14;
-        ctx.fillStyle = violet;
+        ctx.fillStyle = accent;
         pill(ctx, i * (bw + gap), mid - (lv * (h - 4)) / 2, bw, lv * (h - 4));
       });
       const x0 = METER_PROFILE.length * (bw + gap) + 10;
@@ -192,7 +192,7 @@ export function LiveMeter(props: LineProps) {
       const px = x0 + (pos / Math.max(durationMs, 1)) * tw;
       ctx.fillStyle = token("--track");
       pill(ctx, x0, mid - 2, tw, 4);
-      ctx.fillStyle = violet;
+      ctx.fillStyle = accent;
       pill(ctx, x0, mid - 2, Math.max(4, px - x0), 4);
       ctx.save();
       ctx.shadowColor = "rgba(0, 0, 0, 0.28)";
@@ -203,7 +203,7 @@ export function LiveMeter(props: LineProps) {
       ctx.arc(px, mid, 6, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
-      ctx.fillStyle = violet;
+      ctx.fillStyle = accent;
       ctx.beginPath();
       ctx.arc(px, mid, 2.5, 0, Math.PI * 2);
       ctx.fill();

@@ -120,8 +120,8 @@ pub fn worker_bin(worker: &str) -> Option<PathBuf> {
 
 fn worker_for(family: Family) -> &'static str {
     match family {
-        Family::Kokoro => "speakit-kokoro-worker",
-        Family::Pocket => "speakit-pocket-worker",
+        Family::Kokoro => "sovirae-kokoro-worker",
+        Family::Pocket => "sovirae-pocket-worker",
     }
 }
 

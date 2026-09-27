@@ -1,5 +1,5 @@
 [package]
-name = "speakit-native-host"
+name = "sovirae-native-host"  # Activity Monitor shows the executable name
 version.workspace = true
 edition.workspace = true
 license.workspace = true

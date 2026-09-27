@@ -1,7 +1,7 @@
 //! Installs Pocket TTS English through the verified downloader, then
 //! measures cold and warm synthesis and writes WAVs for listening.
 //!
-//! cargo build --release -p speakit-pocket-worker
+//! cargo build --release -p sovirae-pocket-worker
 //! cargo run --release -p speakit-tts --example pocket_bench -- <models-dir> <out-dir> [threads]
 
 use std::path::PathBuf;
@@ -41,7 +41,7 @@ fn main() {
         .expect("install");
     println!("installed {} in {:.1?}", model.name, t.elapsed());
 
-    let worker_bin = std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().join("speakit-pocket-worker");
+    let worker_bin = std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().join("sovirae-pocket-worker");
     let voices = model
         .voices
         .iter()

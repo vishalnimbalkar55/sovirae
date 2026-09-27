@@ -1,7 +1,7 @@
 //! Chrome bridge (spec §13): native-host registration, the user-owned Unix
 //! socket the host connects to, pairing, and the request/state protocol.
 //!
-//! Chrome → extension worker → `speakit-native-host` (stdio) → this socket.
+//! Chrome → extension worker → `sovirae-native-host` (stdio) → this socket.
 //! The host only relays; every decision is made here.
 
 use std::collections::{HashMap, HashSet};
@@ -121,7 +121,7 @@ fn manifest_path(root: &Path) -> PathBuf {
 pub fn host_bin() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
-    let name = "speakit-native-host";
+    let name = "sovirae-native-host";
     [dir.join(name), dir.join("../release").join(name), dir.join("../debug").join(name)]
         .into_iter()
         .find(|p| p.is_file())

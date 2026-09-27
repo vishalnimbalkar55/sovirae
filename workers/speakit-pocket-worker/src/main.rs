@@ -65,7 +65,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let arg = |name: &str| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned();
     let (Some(model), Some(tokenizer)) = (arg("--model").map(PathBuf::from), arg("--tokenizer").map(PathBuf::from)) else {
-        eprintln!("usage: speakit-pocket-worker --model <model.safetensors> --tokenizer <tokenizer.json> [--threads <n>] [--options <json>]");
+        eprintln!("usage: sovirae-pocket-worker --model <model.safetensors> --tokenizer <tokenizer.json> [--threads <n>] [--options <json>]");
         std::process::exit(2);
     };
     let threads = arg("--threads").and_then(|t| t.parse::<usize>().ok()).unwrap_or(2).max(1);

@@ -111,7 +111,7 @@ export default function VoicesScreen({ app }: { app: AppModel }) {
         <div className="voice-setup">
           <div className="voice-setup-model">
             <span className="muted">Using</span>
-            <span className="pill violet">{activeName}</span>
+            <span className="pill accent">{activeName}</span>
           </div>
           <div className="voice-setup-fields">
             <label className="field">
@@ -225,7 +225,7 @@ function ModelRow({ model, active, onUse }: { model: ModelView; active: boolean;
       <div className="model-info">
         <div className="model-title">
           <span className="model-name">{model.name}</span>
-          {active && <span className="pill violet"><Check /> In use</span>}
+          {active && <span className="pill accent"><Check /> In use</span>}
           {!model.builtIn && installed && !active && <span className="pill ok"><span className="led" />Downloaded</span>}
         </div>
         <p className="model-desc">{model.description}</p>

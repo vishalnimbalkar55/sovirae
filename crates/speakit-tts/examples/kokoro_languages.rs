@@ -39,7 +39,7 @@ fn main() {
     }
     let installed = store.installed(model).unwrap();
 
-    let worker_bin = std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().join("speakit-kokoro-worker");
+    let worker_bin = std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().join("sovirae-kokoro-worker");
     let voices = model.voices.iter().map(|v| KokoroVoice {
         id: v.id.clone(), label: v.label.clone(), language: v.language.clone(), gender: v.gender.clone(),
         g2p: v.g2p.clone(), approximate_pronunciation: v.pronunciation.is_some(), file: installed.voice_file(&v.id),

@@ -49,7 +49,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let arg = |name: &str| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned();
     let Some(model) = arg("--model").map(PathBuf::from) else {
-        eprintln!("usage: speakit-kokoro-worker --model <path> [--threads <n>] [--device cpu|gpu]");
+        eprintln!("usage: sovirae-kokoro-worker --model <path> [--threads <n>] [--device cpu|gpu]");
         std::process::exit(2);
     };
     let threads = arg("--threads").and_then(|t| t.parse::<usize>().ok()).unwrap_or(2).max(1);

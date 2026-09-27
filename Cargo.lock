@@ -4497,7 +4497,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "speakit"
+name = "sovirae"
 version = "0.1.0"
 dependencies = [
  "arboard",
@@ -4520,6 +4520,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "sovirae-kokoro-worker"
+version = "0.1.0"
+dependencies = [
+ "ort",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "sovirae-native-host"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "speakit-protocol",
+]
+
+[[package]]
+name = "sovirae-pocket-worker"
+version = "0.1.0"
+dependencies = [
+ "candle-core",
+ "candle-nn",
+ "serde",
+ "serde_json",
+ "tokenizers",
+]
+
+[[package]]
 name = "speakit-audio"
 version = "0.1.0"
 dependencies = [
@@ -4539,15 +4567,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "speakit-kokoro-worker"
-version = "0.1.0"
-dependencies = [
- "ort",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "speakit-models"
 version = "0.1.0"
 dependencies = [
@@ -4558,25 +4577,6 @@ dependencies = [
  "sha2 0.11.0",
  "thiserror 2.0.21",
  "ureq",
-]
-
-[[package]]
-name = "speakit-native-host"
-version = "0.1.0"
-dependencies = [
- "libc",
- "speakit-protocol",
-]
-
-[[package]]
-name = "speakit-pocket-worker"
-version = "0.1.0"
-dependencies = [
- "candle-core",
- "candle-nn",
- "serde",
- "serde_json",
- "tokenizers",
 ]
 
 [[package]]

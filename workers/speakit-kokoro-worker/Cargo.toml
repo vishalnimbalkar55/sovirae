@@ -1,5 +1,5 @@
 [package]
-name = "speakit-kokoro-worker"
+name = "sovirae-kokoro-worker"  # Activity Monitor shows the executable name
 version.workspace = true
 edition.workspace = true
 license.workspace = true
