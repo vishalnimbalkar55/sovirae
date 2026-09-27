@@ -13,7 +13,8 @@
     "test": "cargo test --workspace && node --test ext/tests/*.test.js",
     "build:all": "node scripts/build.mjs",
     "build:collect": "node scripts/build.mjs --collect",
-    "setup:windows-cross": "bash scripts/setup-windows-cross.sh"
+    "setup:windows-cross": "bash scripts/setup-windows-cross.sh",
+    "fetch:cuda": "node scripts/fetch-cuda.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",

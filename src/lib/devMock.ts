@@ -42,7 +42,7 @@ export function installDevMock() {
   mockIPC(
     (cmd, args) => {
       switch (cmd) {
-        case "get_state": return { settings, snapshot, platform: "macos", engine: "macos-system" };
+        case "get_state": return { settings, snapshot, platform: params.get("platform") ?? "macos", engine: "macos-system" };
         case "read_clipboard_text":
           if (params.get("clipboard") === "empty") throw "Clipboard is empty. Copy some text and try again.";
           return SAMPLE;

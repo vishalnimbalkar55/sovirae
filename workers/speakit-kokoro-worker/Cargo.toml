@@ -14,3 +14,10 @@ ort = { version = "=2.0.0-rc.13", default-features = false, features = ["std", "
 # GPU path (Metal via Dawn). Links libwebgpu_dawn.dylib, which ships next to
 # the worker; see build.rs for the search path.
 ort = { version = "=2.0.0-rc.13", default-features = false, features = ["webgpu"] }
+
+[target.'cfg(windows)'.dependencies]
+# GPU path (CUDA 13, NVIDIA). Selects ONNX Runtime's CUDA build, which loads
+# onnxruntime_providers_cuda.dll and the NVIDIA DLLs from
+# scripts/fetch-cuda.mjs only when the GPU is requested. `directml` is listed
+# because that build includes it; DirectML cannot run Kokoro (see main.rs).
+ort = { version = "=2.0.0-rc.13", default-features = false, features = ["cuda", "directml"] }

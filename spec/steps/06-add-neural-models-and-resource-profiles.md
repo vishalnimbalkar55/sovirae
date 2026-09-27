@@ -42,9 +42,9 @@ Measured on Apple M4 (10 cores), macOS 15.1, Kokoro-82M fp32 at revision 1939ad2
 
 - GPU audio is the same length as CPU audio, correlation 0.997–0.998, waveform SNR 22–25 dB, log-spectral distance 1.6–2.1 dB (numeric precision, not a different voice). CPU output is bit-identical run to run. A listening comparison is still open.
 - End-to-end through the controller and audio output (`cargo test -p speakit end_to_end_kokoro_gpu -- --ignored`): first audio 2.05 s cold and 1.13 s warm on the GPU, vs 1.72 s / 1.28 s on the CPU in the same run; the player shows `GPU`.
-- Settings → Performance → **Use GPU** switch, off by default; it can be turned on only on Apple Silicon (disabled elsewhere). Only downloaded voices are affected; system voices are run by macOS.
+- Settings → Performance → **Use GPU** switch, off by default; it can be turned on only on Apple Silicon and Windows (disabled elsewhere). Only downloaded voices are affected; system voices are run by the OS.
 - The player shows the device the worker actually loaded, never the requested one. If the GPU cannot load, or fails mid-reading and the CPU succeeds on the same segment, the engine continues on the CPU and Settings shows the reason. Changing the setting tries the GPU again. Covered by fake-worker tests in `speakit-tts`.
-- Packaging: the worker links `libwebgpu_dawn.dylib` (8.7 MB, BSD-3-Clause), bundled in `Contents/Frameworks` and checked by `scripts/build.sh`. Intel Macs, Windows (DirectML/CUDA), and Linux have no GPU path yet.
+- Packaging: the worker links `libwebgpu_dawn.dylib` (8.7 MB, BSD-3-Clause), bundled in `Contents/Frameworks` and checked by `scripts/build.sh`. Windows uses CUDA on NVIDIA GPUs ([step 14](14-windows-support.md)); Intel Macs and Linux have no GPU path yet.
 
 ## Relevant requirements
 

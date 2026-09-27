@@ -3,6 +3,8 @@
 // target/windows-bundle/, which tauri.windows.conf.json bundles:
 //
 //   sovirae-kokoro-worker.exe, sovirae-pocket-worker.exe   inference workers
+//   cu*.dll, onnxruntime_providers_*.dll, cuda-licenses/   Kokoro on NVIDIA
+//                GPUs, only after `node scripts/fetch-cuda.mjs`
 //   espeak-ng/   eSpeak NG (GPL-3.0, a separate program) for Kokoro
 //                pronunciation, unpacked from the official MSI
 //
@@ -112,8 +114,37 @@ async function stageEspeak() {
   rmSync(tmp, { recursive: true, force: true });
 }
 
+/**
+ * Kokoro's NVIDIA GPU path, only once `node scripts/fetch-cuda.mjs` has run
+ * (about 1.5 GB). Without it the installer is unchanged and the GPU setting
+ * reports the missing libraries and uses the CPU.
+ */
+function stageCuda(out) {
+  const nvidia = resolve("target/cuda/bin");
+  const files = new Map();
+  if (existsSync(nvidia)) {
+    for (const f of ["onnxruntime_providers_shared.dll", "onnxruntime_providers_cuda.dll"]) files.set(f, join(out, f));
+    for (const f of readdirSync(nvidia)) files.set(f, join(nvidia, f));
+  }
+  for (const f of readdirSync(BUNDLE)) {
+    if (/^(cu|nvblas|onnxruntime_providers_).*\.dll$/i.test(f) && !files.has(f)) rmSync(join(BUNDLE, f));
+  }
+  rmSync(join(BUNDLE, "cuda-licenses"), { recursive: true, force: true });
+  if (files.size === 0) {
+    console.log("Kokoro GPU (CUDA) not bundled; run `node scripts/fetch-cuda.mjs` to include it.");
+    return;
+  }
+  // About 1.5 GB, so unchanged files are not copied again on every dev start.
+  for (const [f, src] of files) {
+    const dst = join(BUNDLE, f);
+    if (!existsSync(dst) || statSync(dst).size !== statSync(src).size || statSync(dst).mtimeMs < statSync(src).mtimeMs) copyFileSync(src, dst);
+  }
+  cpSync(resolve("target/cuda/licenses"), join(BUNDLE, "cuda-licenses"), { recursive: true });
+}
+
 mkdirSync(BUNDLE, { recursive: true });
 const out = buildWorkers();
 for (const w of WORKERS) copyFileSync(join(out, `${w}.exe`), join(BUNDLE, `${w}.exe`));
+stageCuda(out);
 await stageEspeak();
 console.log(`Windows helpers staged in ${BUNDLE}`);

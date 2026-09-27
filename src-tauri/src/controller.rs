@@ -1118,7 +1118,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "needs the installed Kokoro model, an Apple Silicon GPU, and plays audio"]
+    #[ignore = "needs the installed Kokoro model, an Apple Silicon or NVIDIA GPU (with scripts/fetch-cuda.mjs on Windows), and plays audio"]
     fn end_to_end_kokoro_gpu() {
         kokoro_reading(true);
     }
@@ -1127,8 +1127,11 @@ mod tests {
         use speakit_models::Store;
         use speakit_tts::kokoro::{KokoroConfig, KokoroEngine, KokoroVoice};
         let model = speakit_models::find("kokoro-82m-v1.0").unwrap();
-        let root = std::path::PathBuf::from(std::env::var("HOME").unwrap())
-            .join("Library/Application Support/com.sovirae.desktop/models");
+        let root = if cfg!(windows) {
+            std::path::PathBuf::from(std::env::var("APPDATA").unwrap()).join("com.sovirae.desktop/models")
+        } else {
+            std::path::PathBuf::from(std::env::var("HOME").unwrap()).join("Library/Application Support/com.sovirae.desktop/models")
+        };
         let installed = Store::new(root).installed(model).expect("Kokoro installed");
         let worker_bin = std::env::current_dir().unwrap().join("../target/release/sovirae-kokoro-worker");
         let voices = model.voices.iter().map(|v| KokoroVoice {
@@ -1146,7 +1149,7 @@ mod tests {
         let first = host.wait_for(Duration::from_secs(15), |s| s.status == PlaybackStatus::Playing).expect("plays");
         println!("Kokoro first audible output (cold worker) after {first:?}");
         assert_eq!(host.last().voice.as_deref(), Some("Heart"));
-        assert_eq!(host.last().device, if gpu { "GPU" } else { "CPU" });
+        assert_eq!(host.last().device, if gpu { "GPU" } else { "CPU" }, "GPU fallback: {:?}", registry.gpu_fallback());
         std::thread::sleep(Duration::from_millis(2500));
         assert!(host.last().position_ms > 1500, "position advances");
         assert!(host.0.lock().unwrap().notices.is_empty(), "no errors");
@@ -1166,8 +1169,11 @@ mod tests {
         use speakit_models::Store;
         use speakit_tts::pocket::{PocketConfig, PocketEngine, PocketVoice};
         let model = speakit_models::find("pocket-tts-en").unwrap();
-        let root = std::path::PathBuf::from(std::env::var("HOME").unwrap())
-            .join("Library/Application Support/com.sovirae.desktop/models");
+        let root = if cfg!(windows) {
+            std::path::PathBuf::from(std::env::var("APPDATA").unwrap()).join("com.sovirae.desktop/models")
+        } else {
+            std::path::PathBuf::from(std::env::var("HOME").unwrap()).join("Library/Application Support/com.sovirae.desktop/models")
+        };
         let installed = Store::new(root).installed(model).expect("Pocket TTS English installed");
         let worker_bin = std::env::current_dir().unwrap().join("../target/release/sovirae-pocket-worker");
         let voices = model.voices.iter().map(|v| PocketVoice {
@@ -1206,8 +1212,11 @@ mod tests {
         use speakit_models::Store;
         use speakit_tts::kokoro::{KokoroConfig, KokoroEngine, KokoroVoice};
         let model = speakit_models::find("kokoro-82m-v1.0").unwrap();
-        let root = std::path::PathBuf::from(std::env::var("HOME").unwrap())
-            .join("Library/Application Support/com.sovirae.desktop/models");
+        let root = if cfg!(windows) {
+            std::path::PathBuf::from(std::env::var("APPDATA").unwrap()).join("com.sovirae.desktop/models")
+        } else {
+            std::path::PathBuf::from(std::env::var("HOME").unwrap()).join("Library/Application Support/com.sovirae.desktop/models")
+        };
         let installed = Store::new(root).installed(model).expect("Kokoro installed");
         let voices = model.voices.iter().map(|v| KokoroVoice {
             id: v.id.clone(), label: v.label.clone(), language: v.language.clone(), gender: v.gender.clone(), g2p: v.g2p.clone(), approximate_pronunciation: v.pronunciation.is_some(), file: installed.voice_file(&v.id),

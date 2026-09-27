@@ -20,9 +20,10 @@ use crate::{CancelToken, Engine, Pcm, TtsError, VoiceInfo};
 const LOAD_TIMEOUT: Duration = Duration::from_secs(60);
 const SYNTH_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// Whether this build's worker has a GPU provider. Only Apple Silicon Macs
-/// have been measured (WebGPU on Metal).
-pub const GPU_AVAILABLE: bool = cfg!(all(target_os = "macos", target_arch = "aarch64"));
+/// Whether this build's worker has a GPU provider: WebGPU on Metal on Apple
+/// Silicon, DirectML on Windows. Whether the GPU actually loads is only known
+/// once the worker starts, which falls back to the CPU and reports why.
+pub const GPU_AVAILABLE: bool = cfg!(any(all(target_os = "macos", target_arch = "aarch64"), windows));
 
 #[derive(Debug, Clone)]
 pub struct KokoroVoice {
@@ -47,7 +48,7 @@ pub struct KokoroConfig {
     pub worker_bin: PathBuf,
     pub voices: Vec<KokoroVoice>,
     pub threads: usize,
-    /// Ask the worker for the GPU provider (WebGPU on Apple Silicon).
+    /// Ask the worker for the GPU provider (WebGPU on Apple Silicon, DirectML on Windows).
     pub gpu: bool,
     pub model_rate: u32,
 }

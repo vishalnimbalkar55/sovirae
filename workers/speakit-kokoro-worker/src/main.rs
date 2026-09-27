@@ -60,7 +60,7 @@ fn main() {
     let mut worker = match Worker::load(&model, threads, gpu) {
         Ok(w) => w,
         Err(e) => {
-            write_error(&mut out, 0, &format!("The voice model could not be loaded: {e}"));
+            write_error(&mut out, 0, &format!("The voice model could not be loaded: {}", explain(&e)));
             std::process::exit(1);
         }
     };
@@ -103,6 +103,21 @@ fn write_frame(out: &mut impl Write, id: u64, status: u32, payload: &[u8]) {
 
 fn write_error(out: &mut impl Write, id: u64, message: &str) {
     write_frame(out, id, 1, message.as_bytes());
+}
+
+/// Shortens ONNX Runtime's missing-library error, which Settings shows as
+/// the reason the GPU is not in use.
+fn explain(error: &str) -> String {
+    // `Error loading "<path>" which is missing` or
+    // `... which depends on "<dll>" which is missing`.
+    let missing = error
+        .split_once("\" which is missing")
+        .and_then(|(before, _)| before.rsplit('"').next())
+        .map(|path| path.rsplit(['\\', '/']).next().unwrap_or(path));
+    match missing {
+        Some(dll) => format!("the NVIDIA CUDA libraries are not installed ({dll} is missing)"),
+        None => error.to_string(),
+    }
 }
 
 impl Worker {
@@ -193,8 +208,8 @@ impl Worker {
     }
 }
 
-/// The GPU execution provider for this platform: WebGPU, which runs on
-/// Metal on macOS. Measured on Apple M4 against CoreML, which was no faster
+/// The GPU execution provider on Apple Silicon: WebGPU, which runs on
+/// Metal. Measured on Apple M4 against CoreML, which was no faster
 /// than the CPU for this model (spec §7.3). Registration errors are reported
 /// instead of silently running on the CPU.
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
@@ -202,7 +217,23 @@ fn gpu_provider() -> Result<ort::ep::ExecutionProviderDispatch, String> {
     Ok(ort::ep::WebGPU::default().build().error_on_failure())
 }
 
-#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+/// CUDA on Windows, for NVIDIA GPUs. It needs the CUDA 13 and cuDNN 9 DLLs
+/// next to the worker (`scripts/fetch-cuda.mjs`); without them the worker
+/// fails to load and the app reports the missing DLL and uses the CPU.
+/// DirectML, which needs only the driver, cannot run Kokoro: its
+/// ConvTranspose kernel rejects the F0 upsampling layer (spec step 14).
+/// The heuristic convolution search avoids re-benchmarking cuDNN
+/// algorithms for every new sentence length.
+#[cfg(windows)]
+fn gpu_provider() -> Result<ort::ep::ExecutionProviderDispatch, String> {
+    use ort::ep::cuda::ConvAlgorithmSearch;
+    Ok(ort::ep::CUDA::default()
+        .with_conv_algorithm_search(ConvAlgorithmSearch::Heuristic)
+        .build()
+        .error_on_failure())
+}
+
+#[cfg(not(any(all(target_os = "macos", target_arch = "aarch64"), windows)))]
 fn gpu_provider() -> Result<ort::ep::ExecutionProviderDispatch, String> {
     Err("GPU acceleration is not available on this computer".into())
 }
@@ -245,6 +276,15 @@ mod tests {
         for c in "həlˈO wˈɜɹld".chars() {
             assert!(map.contains_key(&c), "missing {c}");
         }
+    }
+
+    #[test]
+    fn names_the_missing_cuda_library() {
+        let ort = r#"provider_bridge_ort.cc:1988 [ONNXRuntimeError] : 1 : FAIL : Error loading "C:\app\onnxruntime_providers_cuda.dll" which depends on "cublasLt64_13.dll" which is missing. (Error 126)"#;
+        assert_eq!(explain(ort), "the NVIDIA CUDA libraries are not installed (cublasLt64_13.dll is missing)");
+        let no_provider = r#"[ONNXRuntimeError] : 1 : FAIL : Error loading "C:\app\onnxruntime_providers_shared.dll" which is missing. (Error 126)"#;
+        assert_eq!(explain(no_provider), "the NVIDIA CUDA libraries are not installed (onnxruntime_providers_shared.dll is missing)");
+        assert_eq!(explain("no adapter"), "no adapter");
     }
 
     #[test]

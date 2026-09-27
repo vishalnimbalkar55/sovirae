@@ -133,6 +133,9 @@ function gpuHint(s: Settings, status: ProcessorStatus | null): string {
   if (s.processor === "gpu" && status.fallback) {
     return `The GPU could not run downloaded voices, so they use the CPU. ${status.fallback}`;
   }
+  if (document.documentElement.dataset.platform === "windows") {
+    return "Downloaded voices read faster on an NVIDIA GPU and leave the CPU free. System voices are run by Windows.";
+  }
   return "Downloaded voices read faster and leave the CPU free. System voices are run by macOS.";
 }
 

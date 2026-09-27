@@ -27,7 +27,7 @@
 - [ ] Kokoro worker builds with ONNX Runtime for MSVC and finds eSpeak NG on Windows.
 - [ ] Pocket TTS worker builds and runs on the CPU; real-time factor measured.
 - [ ] Workers bundled next to `Sovirae.exe` by the installer.
-- [ ] Optional: Kokoro on the GPU through DirectML, with fallback reporting.
+- [x] Optional: Kokoro on the GPU, with fallback reporting. CUDA on NVIDIA, not DirectML (see Progress).
 
 ## Progress
 
@@ -47,6 +47,21 @@
   - Helper processes start with `CREATE_NO_WINDOW` so the windowed app doesn't flash consoles.
   - Model download seen failing once with "The system cannot find the file specified" on a voice file; retrying resumed and completed. Cause not identified.
   - Not yet verified: the NSIS installer with the bundled helpers, and the Mac cross-build (`prepare-windows.mjs` needs `msiextract` from msitools there).
+
+- 2026-09-27 — Kokoro on an NVIDIA GPU (CUDA). Measured on a GeForce GTX 1650 laptop GPU (4 GB, Turing), driver 592.82, Windows 11 26200, Kokoro-82M fp32 at revision 1939ad2a, ONNX Runtime 1.28 (ort 2.0.0-rc.13, pyke `cuda13` build), 4 intra-op threads (`kokoro_bench … 4 cpu|gpu`):
+
+  | Provider | Warm RTF | Cold first sentence | Result |
+  |---|---|---|---|
+  | CPU | 0.31–0.42 | 3.5–5.8 s | Baseline |
+  | DirectML | — | — | **Rejected**: loads, then every request fails in `/encoder/F0.1/pool/ConvTranspose` (`80070057 The parameter is incorrect`) at every graph optimization level |
+  | WebGPU (Dawn, D3D12) | — | — | Not measured: pyke's Windows WebGPU build needs the MSVC 14.50 (VS 2026) STL and does not link with 14.44 |
+  | **CUDA 13 + cuDNN 9.14** | **0.097–0.126** | 2.8 s | **Chosen**: 1.1 GB VRAM, 50–75 % GPU utilization while speaking |
+
+  - GPU audio is the same length as CPU audio, correlation 0.997–0.999, waveform SNR 22–26 dB, log-spectral distance 1.3 dB (numeric precision, as on Apple Silicon). GPU output is identical run to run. A listening comparison is still open.
+  - End to end through the controller and audio output (`cargo test --release -p sovirae end_to_end_kokoro -- --ignored`, with `SOVIRAE_ESPEAK` pointing at the bundled eSpeak): both pass and the player shows `GPU`. First audio 10.4 s cold on the GPU (loading ~1.3 GB of NVIDIA DLLs from a cold disk cache) and 2.4 s warm, the same warm latency as the CPU.
+  - Only the display driver is needed, not the CUDA toolkit. `node scripts/fetch-cuda.mjs` downloads NVIDIA's redistributable archives (cudart 13.1, cuBLAS 13.2, cuFFT 12.1, cuDNN 9.14 for CUDA 13; ~950 MB, SHA-256 pinned) and copies the DLLs next to the built workers. `prepare-windows.mjs` bundles them with `onnxruntime_providers_cuda.dll` and the NVIDIA licenses only once they have been fetched (+1.3 GB to the installer); otherwise the installer is unchanged.
+  - Without the libraries, or without an NVIDIA GPU, the worker fails to load on the GPU with a short reason (e.g. "the NVIDIA CUDA libraries are not installed (cublasLt64_13.dll is missing)") and the engine continues on the CPU, as on macOS.
+  - Open: how end users get the libraries. Bundling makes the installer ~1.3 GB larger; the alternative is an explicit, optional in-app download (spec §7.3: no silent large downloads). Cold GPU start and memory under a 30-minute read are not yet measured.
 
 ## Relevant requirements
 
