@@ -122,7 +122,8 @@ async function stageEspeak() {
 function stageCuda(out) {
   const nvidia = resolve("target/cuda/bin");
   const files = new Map();
-  if (existsSync(nvidia)) {
+  // `build.mjs --no-gpu` sets SOVIRAE_NO_CUDA for a CPU-only installer.
+  if (existsSync(nvidia) && !process.env.SOVIRAE_NO_CUDA) {
     for (const f of ["onnxruntime_providers_shared.dll", "onnxruntime_providers_cuda.dll"]) files.set(f, join(out, f));
     for (const f of readdirSync(nvidia)) files.set(f, join(nvidia, f));
   }
@@ -131,7 +132,9 @@ function stageCuda(out) {
   }
   rmSync(join(BUNDLE, "cuda-licenses"), { recursive: true, force: true });
   if (files.size === 0) {
-    console.log("Kokoro GPU (CUDA) not bundled; run `node scripts/fetch-cuda.mjs` to include it.");
+    console.log(process.env.SOVIRAE_NO_CUDA
+      ? "Kokoro GPU (CUDA) left out (--no-gpu)."
+      : "Kokoro GPU (CUDA) not bundled; run `npm run fetch:cuda` to include it.");
     return;
   }
   // About 1.5 GB, so unchanged files are not copied again on every dev start.

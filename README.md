@@ -20,14 +20,24 @@ npm run build:all
 Everything ends up in `build/` (each platform folder is cleared and refilled):
 
 ```
-build/macos/Sovirae.app                    the macOS app            (built on a Mac)
-build/macos/Sovirae_0.1.0_aarch64.dmg      the macOS installer
-build/windows/Sovirae_0.1.0_x64-setup.exe  the Windows installer    (built on Windows, or on a
-                                           Mac set up for cross-builds)
-build/ext/                                 the Chrome extension, for Load unpacked
+build/macos/Sovirae.app                       the macOS app            (built on a Mac)
+build/macos/Sovirae_0.1.0_aarch64.dmg         the macOS installer
+build/macos/Sovirae_0.1.0_macos.zip           the app, zipped
+build/windows/Sovirae_0.1.0_x64-setup.exe     the Windows installer    (built on Windows, or on a
+                                              Mac set up for cross-builds)
+build/windows/Sovirae_0.1.0_x64-portable.zip  unzip and run Sovirae.exe, no install
+build/ext/                                    the Chrome extension, for Load unpacked
+build/Sovirae_0.1.0_chrome-extension.zip      the same, zipped (manifest at the root, as the
+                                              Chrome Web Store expects)
 ```
 
-Options: `-- --skip-tests`, `-- --no-install` (reuse `node_modules`), and
+On Windows, Kokoro's NVIDIA GPU support adds ~1.3 GB of NVIDIA libraries.
+They are included once `npm run fetch:cuda` has downloaded them (only the
+display driver is needed, not the CUDA toolkit); `-- --no-gpu` builds without
+them.
+
+Options: `-- --skip-tests`, `-- --no-install` (reuse `node_modules`; use it
+while `npm run app:dev` is running, which locks files there), `-- --no-gpu`, and
 `-- --mac` / `-- --windows` to build one platform, e.g.
 `npm run build:all -- --windows`. `npm run app:build` is the quick form
 (no tests, no reinstall). To copy the last builds into `build/` again without
@@ -100,6 +110,7 @@ share it, sign and notarize with an Apple Developer ID.
 |---|---|
 | Build everything (tests + app + installer + extension) | `npm run build:all` |
 | Set up a Mac to also build the Windows installer (once) | `npm run setup:windows-cross` |
+| Download the NVIDIA GPU libraries for Windows builds (once, ~950 MB) | `npm run fetch:cuda` |
 | Build without tests | `npm run app:build` |
 | Copy the last build into `build/` again (no rebuild) | `npm run build:collect` |
 | Run in development (hot reload) | `npm run app:dev` |

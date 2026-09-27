@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatTime } from "../lib/format";
-import { levelAt, spanIndexAt, textFraction, type LineSentence, type Span } from "./timeline";
+import { extrapolate, levelAt, spanIndexAt, textFraction, type LineSentence, type Span } from "./timeline";
 
 export interface LineProps {
   timeline: Span[];
@@ -29,8 +29,8 @@ function usePlayhead(positionMs: number, playing: boolean, rate: number, duratio
   }, [positionMs]);
   const at = useCallback(
     (now: number) => {
-      const elapsed = playing && !reducedMotion() ? (now - anchor.current.at) * rate : 0;
-      return Math.min(anchor.current.pos + elapsed, Math.max(durationMs, 1));
+      const head = playing && !reducedMotion() ? extrapolate(anchor.current, now, rate) : anchor.current.pos;
+      return Math.min(head, Math.max(durationMs, 1));
     },
     [playing, rate, durationMs],
   );

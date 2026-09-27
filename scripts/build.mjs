@@ -2,21 +2,28 @@
 // Builds Sovirae for every platform this computer can produce and gathers
 // the results in build/ (each platform folder is cleared and refilled):
 //
-//   build/macos/     Sovirae.app and the DMG               (on a Mac)
-//   build/windows/   Sovirae_<version>_x64-setup.exe       (on Windows, or on a
-//                    Mac after `npm run setup:windows-cross`)
+//   build/macos/     Sovirae.app, the DMG, and Sovirae_<version>_macos.zip (on a Mac)
+//   build/windows/   Sovirae_<version>_x64-setup.exe       installer (on Windows, or
+//                    on a Mac after `npm run setup:windows-cross`)
+//                    Sovirae_<version>_x64-portable.zip    unzip and run, no install
+//                    (on Windows)
 //   build/ext/       the Chrome extension, for Load unpacked
+//   build/Sovirae_<version>_chrome-extension.zip   the same, zipped for the store
+//
+// The Windows builds include Kokoro's NVIDIA GPU libraries (~1.3 GB) once
+// `npm run fetch:cuda` has run; --no-gpu leaves them out.
 //
 //   node scripts/build.mjs                 every platform this computer can build, with tests
 //   node scripts/build.mjs --skip-tests    build only
 //   node scripts/build.mjs --no-install    reuse node_modules instead of `npm ci`
 //   node scripts/build.mjs --mac           only macOS  (also: --windows)
+//   node scripts/build.mjs --no-gpu        Windows without the NVIDIA GPU libraries
 //   node scripts/build.mjs --collect       copy the last builds into build/ without rebuilding
 
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -26,6 +33,9 @@ const args = new Set(process.argv.slice(2));
 const HOST = process.platform === "darwin" ? "mac" : process.platform === "win32" ? "windows" : process.platform;
 const WIN_TARGET = "x86_64-pc-windows-msvc";
 const CROSS_MARKER = join(homedir(), ".sovirae-build", "xwin-license-accepted");
+const VERSION = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8")).version;
+// prepare-windows.mjs (Tauri's before-build command) reads this.
+if (args.has("--no-gpu")) process.env.SOVIRAE_NO_CUDA = "1";
 
 const bold = (s) => (process.stdout.isTTY ? `\x1b[1m${s}\x1b[0m` : s);
 const step = (s) => console.log(`\n${bold(`==> ${s}`)}`);
@@ -171,6 +181,7 @@ function collectMac() {
   // ditto keeps the bundle's symlinks, permissions, and signature intact.
   run("ditto", [app, "build/macos/Sovirae.app"]);
   for (const f of files(`${BUNDLE}/dmg`, ".dmg")) cpSync(f, join("build/macos", basename(f)));
+  zip("build/macos/Sovirae.app", `build/macos/Sovirae_${VERSION}_macos.zip`, { parent: true });
 }
 
 function collectWindows() {
@@ -187,6 +198,23 @@ function collectWindows() {
   rmSync("build/windows", { recursive: true, force: true });
   mkdirSync("build/windows", { recursive: true });
   for (const [name, f] of newest) cpSync(f, join("build/windows", name));
+
+  // The portable zip holds what the installer puts in the install folder:
+  // the app, the staged helpers, and the extension. It comes from the same
+  // build as the newest installer (…/release/bundle/nsis/<installer>).
+  const latest = [...newest.values()].sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0];
+  const release = dirname(dirname(dirname(latest)));
+  const exe = join(release, "sovirae.exe");
+  if (!existsSync(exe)) fail(`${exe} is missing. Build it first.`);
+  if (!existsSync("target/windows-bundle/sovirae-kokoro-worker.exe")) fail("target/windows-bundle is missing. Build it first.");
+  const dir = "target/portable/Sovirae";
+  rmSync("target/portable", { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  cpSync(exe, join(dir, "Sovirae.exe"));
+  cpSync("target/windows-bundle", dir, { recursive: true });
+  cpSync("build/ext", join(dir, "ext"), { recursive: true });
+  zip(dir, `build/windows/Sovirae_${VERSION}_x64-portable.zip`, { parent: true });
+  rmSync("target/portable", { recursive: true, force: true });
 }
 
 function collectExtension() {
@@ -194,6 +222,26 @@ function collectExtension() {
   const skip = new Set(["tests", "package.json", "node_modules", ".DS_Store"]);
   cpSync("ext", "build/ext", { recursive: true, filter: (src) => !skip.has(basename(src)) });
   if (!existsSync("build/ext/manifest.json")) fail("The Chrome extension was not copied.");
+  // For the Chrome Web Store: manifest.json at the root of the zip.
+  zip("build/ext", `build/Sovirae_${VERSION}_chrome-extension.zip`, { parent: false });
+}
+
+/**
+ * Zips `dir` into `out`: as a folder when `parent`, else its contents at the
+ * zip root. Uses Windows' bundled bsdtar (named in full, since Git Bash's GNU
+ * tar cannot write zips) or macOS's ditto.
+ */
+function zip(dir, out, { parent }) {
+  rmSync(out, { force: true });
+  let r;
+  if (HOST === "windows") {
+    const tar = join(process.env.SystemRoot || "C:\\Windows", "System32", "tar.exe");
+    const [cwd, entries] = parent ? [dirname(dir), [basename(dir)]] : [dir, readdirSync(dir)];
+    r = spawnSync(tar, ["-a", "-c", "-f", resolve(out), ...entries], { cwd, stdio: "inherit" });
+  } else {
+    r = spawnSync("ditto", ["-c", "-k", "--sequesterRsrc", ...(parent ? ["--keepParent"] : []), dir, out], { stdio: "inherit" });
+  }
+  if (r.status !== 0 || !existsSync(out)) fail(`Could not create ${out}.`);
 }
 
 function files(dir, suffix) {
@@ -205,15 +253,20 @@ function basename(p) {
 
 function summary() {
   step("Done");
-  for (const dir of ["build/macos", "build/windows", "build/ext"]) {
-    if (existsSync(dir)) console.log(`${dir.padEnd(14)} ${readdirSync(dir).join(", ")}`);
+  const size = (f) => `${(statSync(f).size / 1048576).toFixed(1)} MB`;
+  for (const dir of ["build/macos", "build/windows"]) {
+    if (!existsSync(dir)) continue;
+    for (const f of readdirSync(dir)) console.log(`${join(dir, f).padEnd(48)} ${f.endsWith(".app") ? "" : size(join(dir, f))}`);
   }
+  if (existsSync("build/ext")) console.log(`${"build/ext/".padEnd(48)} Load unpacked in chrome://extensions`);
+  for (const f of files("build", ".zip")) console.log(`${f.padEnd(48)} ${size(f)}`);
 }
 
 // ---- Main --------------------------------------------------------------------
 
 if (args.has("--collect")) {
   step("Collecting the last builds into build/");
+  collectExtension(); // first: the portable Windows zip includes it
   let any = false;
   if (existsSync(`${BUNDLE}/macos/Sovirae.app`)) (collectMac(), (any = true));
   if ([`${BUNDLE}/nsis`, `target/${WIN_TARGET}/release/bundle/nsis`].some((d) => files(d, "-setup.exe").length)) {
@@ -221,7 +274,6 @@ if (args.has("--collect")) {
     any = true;
   }
   if (!any) fail("Nothing has been built yet. Run npm run build:all first.");
-  collectExtension();
   summary();
 } else {
   const targets = chooseTargets();
@@ -231,8 +283,8 @@ if (args.has("--collect")) {
   if (targets.includes("mac")) buildMac();
   if (targets.includes("windows")) buildWindows();
   step("Collecting outputs into build/");
+  collectExtension(); // first: the portable Windows zip includes it
   if (targets.includes("mac")) collectMac();
   if (targets.includes("windows")) collectWindows();
-  collectExtension();
   summary();
 }

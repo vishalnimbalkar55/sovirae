@@ -2,6 +2,16 @@ import type { DocumentView, Envelope } from "../lib/types";
 
 const DEFAULT_MS_PER_CHAR = 62;
 
+/** How far the playhead may run ahead of the last reported position. The
+ *  controller reports every 250 ms while audio plays; when reports stop
+ *  (no audio), the playhead stops instead of moving over silence. */
+const MAX_LEAD_MS = 500;
+
+/** Position `now` ms after `anchor` was reported, while playing. */
+export function extrapolate(anchor: { pos: number; at: number }, now: number, rate: number): number {
+  return anchor.pos + Math.min(Math.max(now - anchor.at, 0), MAX_LEAD_MS) * rate;
+}
+
 export interface Span {
   segment: number;
   startMs: number;

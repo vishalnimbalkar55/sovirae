@@ -233,12 +233,15 @@ impl Player {
                 Position { segment: m.segment, offset: m.offset + adv }
             });
         let drained = played >= f.out_total;
-        let input_left =
-            !f.queue.is_empty() || f.stretcher.pending_input() > 0 || !f.scratch.is_empty();
+        let queued = !f.queue.is_empty() || !f.scratch.is_empty();
+        let input_left = queued || f.stretcher.pending_input() > 0;
         PlayerStatus {
             position,
             finished: f.end_of_stream && !input_left && drained,
-            starved: !f.end_of_stream && !input_left && drained,
+            // The stretcher's sub-frame remainder between segments cannot
+            // play until more audio arrives, so it does not count: otherwise
+            // the reading shows as playing while the output is silent.
+            starved: !f.end_of_stream && !queued && !f.stretcher.can_process() && drained,
             underruns: self.shared.underruns.load(Ordering::Relaxed),
             device_lost: self.shared.device_lost.load(Ordering::Relaxed),
             level: f32::from_bits(self.shared.level.load(Ordering::Relaxed)),
@@ -359,11 +362,22 @@ fn run_feeder(
     while !stop.load(Ordering::Acquire) {
         {
             let mut f = feeder.lock().unwrap();
-            // After a flush, drop any stretched samples from before it.
             let req = shared.flush_req.load(Ordering::Acquire);
             if req != seen_flush {
+                // Write nothing until the callback has drained the ring:
+                // the drain would discard new audio as well. `clear` stops
+                // waiting after 200 ms, and the first callback of a new
+                // stream can come later than that (seen on Windows).
+                if shared.flush_ack.load(Ordering::Acquire) < req {
+                    drop(f);
+                    std::thread::sleep(Duration::from_millis(2));
+                    continue;
+                }
                 seen_flush = req;
+                // Drop stretched samples from before the flush; the ring is
+                // empty, so everything written so far has been played.
                 f.scratch.clear();
+                f.out_total = shared.played.load(Ordering::Acquire);
             }
             loop {
                 // Move stretched samples into the ring as space allows.

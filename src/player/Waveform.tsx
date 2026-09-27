@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { formatTime } from "../lib/format";
-import { levelAt, type Span } from "./timeline";
+import { extrapolate, levelAt, type Span } from "./timeline";
 
 interface Props {
   timeline: Span[];
@@ -50,8 +50,8 @@ export default function Waveform({ timeline, positionMs, durationMs, durationIsF
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
       const total = Math.max(durationMs, 1);
-      const elapsed = playing && !reduce ? (now - anchor.current.at) * rate : 0;
-      const pos = scrub ?? Math.min(anchor.current.pos + elapsed, total);
+      const head = playing && !reduce ? extrapolate(anchor.current, now, rate) : anchor.current.pos;
+      const pos = scrub ?? Math.min(head, total);
       const played = token("--wave-played");
       const ahead = token("--wave-ahead");
       const dim = token("--wave-dim");

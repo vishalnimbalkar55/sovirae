@@ -1041,6 +1041,57 @@ mod tests {
         c.send(Command::Shutdown);
     }
 
+    /// Speaks every sentence as a one-second tone; sentences after the first
+    /// take longer to synthesize than the audio before them lasts.
+    struct SlowEngine(std::sync::atomic::AtomicUsize);
+
+    impl Engine for SlowEngine {
+        fn id(&self) -> &'static str { "slow" }
+        fn device(&self) -> &'static str { "CPU" }
+        fn voices(&self) -> Result<Vec<VoiceInfo>, TtsError> {
+            Ok(vec![VoiceInfo {
+                id: "tone".into(), name: "Tone".into(), language: "en-US".into(), gender: None, model: "system".into(),
+                engine: "Test".into(), recommended: true, approximate_pronunciation: false,
+            }])
+        }
+        fn max_segment_chars(&self) -> usize { 40 }
+        fn synthesize(&self, _: &str, _: &str, sample_rate: u32, cancel: &CancelToken) -> Result<Pcm, TtsError> {
+            if self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed) > 0 {
+                let start = Instant::now();
+                while start.elapsed() < Duration::from_millis(2500) {
+                    if cancel.is_cancelled() { return Err(TtsError::Cancelled); }
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+            }
+            let samples = (0..sample_rate).map(|i| 0.2 * (i as f32 * 440.0 * std::f32::consts::TAU / sample_rate as f32).sin()).collect();
+            Ok(Pcm { samples, sample_rate })
+        }
+    }
+
+    #[test]
+    #[ignore = "opens the default output device (silently)"]
+    fn waiting_for_audio_shows_buffering_and_holds_the_position() {
+        let host = TestHost::default();
+        let engine: Arc<dyn Engine> = Arc::new(SlowEngine(Default::default()));
+        let c = spawn(engine, Config { match_language: false, rate: 1.3, volume: 0.0, voice: Some("tone".into()), profile: ResourceProfile::Balanced }, host.clone());
+        c.send(request("The first sentence is ready. The second one is slow. So is the third."));
+        host.wait_for(Duration::from_secs(3), |s| s.status == PlaybackStatus::Playing).expect("plays");
+
+        // One second of audio at 1.3× runs out well before the next sentence.
+        host.wait_for(Duration::from_secs(2), |s| s.status == PlaybackStatus::Buffering)
+            .expect("shows buffering while the next sentence is synthesized");
+        let held = host.last().position_ms;
+        assert!(held <= 1000, "position stops at the end of the audio: {held}");
+        std::thread::sleep(Duration::from_millis(600));
+        let last = host.last();
+        assert_eq!(last.status, PlaybackStatus::Buffering);
+        assert_eq!(last.position_ms, held, "position holds while nothing plays");
+
+        host.wait_for(Duration::from_secs(3), |s| s.status == PlaybackStatus::Playing && s.position_ms > held)
+            .expect("resumes when the sentence arrives");
+        c.send(Command::Shutdown);
+    }
+
     #[test]
     #[ignore = "plays audio through the default output device"]
     fn end_to_end_reading() {

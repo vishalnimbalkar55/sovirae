@@ -80,6 +80,17 @@ impl Stretcher {
         (self.base + self.input.len() as u64).saturating_sub(self.ana_pos as u64) as usize
     }
 
+    /// Whether `process_hop` would produce output now. Between segments a
+    /// remainder shorter than one frame waits for more input and does not.
+    pub fn can_process(&self) -> bool {
+        let end = self.base + self.input.len() as u64;
+        let nominal = self.ana_pos.round() as u64;
+        if nominal + (self.n + self.delta) as u64 <= end {
+            return true;
+        }
+        self.finished_input && (nominal < end || self.tail.iter().any(|&s| s != 0.0))
+    }
+
     /// Produces one synthesis hop (`hs` samples) into `out` if enough input
     /// is buffered. Returns the number of samples written.
     pub fn process_hop(&mut self, out: &mut Vec<f32>) -> usize {
@@ -245,5 +256,28 @@ mod tests {
         while s.process_hop(&mut out) > 0 {}
         let ratio = out.len() as f32 / (input.len() as f32 / 1.5);
         assert!((0.95..1.05).contains(&ratio), "{ratio}");
+    }
+
+    #[test]
+    fn reports_when_a_remainder_is_waiting_for_input() {
+        for rate in [1.0, 1.3] {
+            let mut s = Stretcher::new(48_000);
+            s.set_rate(rate);
+            s.push(&sine(10_000));
+            let mut out = Vec::new();
+            while s.can_process() {
+                assert!(s.process_hop(&mut out) > 0, "can_process agrees with process_hop");
+            }
+            // A remainder is buffered but cannot play until the next segment.
+            assert!(s.pending_input() > 0);
+            assert_eq!(s.process_hop(&mut out), 0);
+            s.push(&sine(10_000));
+            assert!(s.can_process());
+            s.finish();
+            while s.can_process() {
+                assert!(s.process_hop(&mut out) > 0);
+            }
+            assert_eq!(s.process_hop(&mut out), 0, "everything flushed at {rate}x");
+        }
     }
 }
