@@ -129,15 +129,16 @@ pub fn host_bin() -> Option<PathBuf> {
         .into_iter()
         .find(|p| p.is_file())
         .and_then(|p| p.canonicalize().ok())
+        .map(crate::platform::plain_path)
 }
 
 /// The folder to load as an unpacked extension.
 pub fn extension_folder(app: &AppHandle) -> Option<PathBuf> {
     let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../ext");
     if cfg!(debug_assertions) && dev.join("manifest.json").is_file() {
-        return dev.canonicalize().ok();
+        return dev.canonicalize().ok().map(crate::platform::plain_path);
     }
-    let bundled = app.path().resource_dir().ok()?.join("ext");
+    let bundled = crate::platform::plain_path(app.path().resource_dir().ok()?.join("ext"));
     bundled.join("manifest.json").is_file().then_some(bundled)
 }
 

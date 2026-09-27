@@ -374,13 +374,9 @@ pub fn bridge_allow_again(app: AppHandle, id: String) {
     crate::bridge::forget_decline(&app, &id);
 }
 
-/// Shows the unpacked extension folder in Finder for "Load unpacked".
+/// Shows the unpacked extension folder in Finder or Explorer for "Load unpacked".
 #[tauri::command]
 pub fn open_extension_folder(app: AppHandle) -> Result<(), String> {
     let folder = crate::bridge::extension_folder(&app).ok_or("The extension folder is missing from this build.")?;
-    std::process::Command::new("/usr/bin/open")
-        .arg(&folder)
-        .spawn()
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+    crate::platform::open_folder(&folder).map_err(|e| e.to_string())
 }

@@ -43,6 +43,44 @@ pub fn set_player_keyable<R: Runtime>(window: &WebviewWindow<R>, keyable: bool) 
     }
 }
 
+/// Drops the `\\?\` prefix Windows adds to canonical and resource paths.
+/// Explorer, Chrome's folder picker, and people expect `C:\...`.
+pub fn plain_path(path: std::path::PathBuf) -> std::path::PathBuf {
+    let s = path.to_string_lossy();
+    if let Some(unc) = s.strip_prefix(r"\\?\UNC\") {
+        format!(r"\\{unc}").into()
+    } else if let Some(rest) = s.strip_prefix(r"\\?\") {
+        rest.into()
+    } else {
+        path
+    }
+}
+
+/// Opens `folder` in Finder, Explorer, or the desktop's file manager.
+pub fn open_folder(folder: &std::path::Path) -> std::io::Result<()> {
+    let opener = if cfg!(target_os = "macos") {
+        "/usr/bin/open"
+    } else if cfg!(windows) {
+        "explorer.exe"
+    } else {
+        "xdg-open"
+    };
+    std::process::Command::new(opener).arg(folder).spawn().map(|_| ())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::plain_path;
+    use std::path::PathBuf;
+
+    #[test]
+    fn strips_the_verbatim_prefix() {
+        assert_eq!(plain_path(PathBuf::from(r"\\?\C:\Users\me\Sovirae\ext")), PathBuf::from(r"C:\Users\me\Sovirae\ext"));
+        assert_eq!(plain_path(PathBuf::from(r"\\?\UNC\server\share\ext")), PathBuf::from(r"\\server\share\ext"));
+        assert_eq!(plain_path(PathBuf::from("/Applications/Sovirae.app")), PathBuf::from("/Applications/Sovirae.app"));
+    }
+}
+
 #[cfg(target_os = "macos")]
 mod macos {
     use objc2_app_kit::NSWindow;
