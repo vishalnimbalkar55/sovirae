@@ -48,7 +48,11 @@ pub struct KokoroConfig {
     pub worker_bin: PathBuf,
     pub voices: Vec<KokoroVoice>,
     pub threads: usize,
-    /// Ask the worker for the GPU provider (WebGPU on Apple Silicon, DirectML on Windows).
+    /// Workers that may generate segments at once, each with `threads`
+    /// threads. On hybrid laptop CPUs several small workers outrun one wide
+    /// one, since each wide step waits for the slowest core.
+    pub parallel: usize,
+    /// Ask the worker for the GPU provider (WebGPU on Apple Silicon, CUDA on Windows).
     pub gpu: bool,
     pub model_rate: u32,
 }
@@ -56,7 +60,11 @@ pub struct KokoroConfig {
 pub struct KokoroEngine {
     config: Mutex<KokoroConfig>,
     phonemizer: Option<Phonemizer>,
-    worker: Mutex<Option<WorkerProc>>,
+    /// Loaded workers not running a request. A busy worker is owned by the
+    /// call using it and returns here afterwards.
+    idle: Mutex<Vec<WorkerProc>>,
+    /// Bumped by `unload`; a worker started before it is not returned.
+    epoch: AtomicU64,
     next_id: AtomicU64,
     /// Device reported by the most recent worker; "CPU" until one loads.
     device: Mutex<&'static str>,
@@ -69,7 +77,8 @@ impl KokoroEngine {
         Self {
             config: Mutex::new(config),
             phonemizer: Phonemizer::find(),
-            worker: Mutex::new(None),
+            idle: Mutex::new(Vec::new()),
+            epoch: AtomicU64::new(0),
             next_id: AtomicU64::new(1),
             device: Mutex::new("CPU"),
             gpu_error: Mutex::new(None),
@@ -114,13 +123,15 @@ impl KokoroEngine {
         Ok(proc)
     }
 
-    /// Runs one request through the worker, starting it if needed, and
+    /// Runs one request on an idle worker, starting one if none is free, and
     /// returns model-rate samples.
     fn run(&self, phonemes: &str, voice_file: &str, cancel: &CancelToken) -> Result<Vec<f32>, TtsError> {
-        let mut guard = self.worker.lock().unwrap();
-        if guard.is_none() {
-            *guard = Some(self.start(cancel)?);
-        }
+        let epoch = self.epoch.load(Ordering::Acquire);
+        let idle = self.idle.lock().unwrap().pop();
+        let mut proc = match idle {
+            Some(proc) => proc,
+            None => self.start(cancel)?,
+        };
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let req = serde_json::json!({
             "id": id,
@@ -128,28 +139,28 @@ impl KokoroEngine {
             "voice": voice_file,
             "speed": 1.0,
         });
-        let proc = guard.as_mut().unwrap();
-        if let Err(e) = proc.send(&req) {
-            *guard = None;
-            return Err(e);
-        }
-        let frame = match proc.wait(id, cancel, SYNTH_TIMEOUT) {
-            Ok(f) => f,
-            Err(e) => {
-                // Cancelled or failed: native inference may not stop on its
-                // own, so replace the worker (spec §8.4).
-                *guard = None;
-                return Err(e);
-            }
-        };
+        // On a send or wait error the worker is dropped, which kills it:
+        // cancelled native inference may not stop on its own (spec §8.4).
+        proc.send(&req)?;
+        let frame = proc.wait(id, cancel, SYNTH_TIMEOUT)?;
         if frame.status != 0 {
-            if proc.device == "GPU" {
-                *guard = None;
+            let error = TtsError::Engine(String::from_utf8_lossy(&frame.payload).into_owned());
+            if proc.device != "GPU" {
+                self.release(proc, epoch);
             }
-            return Err(TtsError::Engine(String::from_utf8_lossy(&frame.payload).into_owned()));
+            return Err(error);
         }
-        drop(guard);
+        self.release(proc, epoch);
         Ok(worker::samples(&frame.payload))
+    }
+
+    /// Returns a worker to the idle pool unless it is outdated or surplus.
+    fn release(&self, proc: WorkerProc, epoch: u64) {
+        let limit = self.config.lock().unwrap().parallel.max(1);
+        let mut idle = self.idle.lock().unwrap();
+        if self.epoch.load(Ordering::Acquire) == epoch && idle.len() < limit {
+            idle.push(proc);
+        }
     }
 }
 
@@ -223,7 +234,24 @@ impl Engine for KokoroEngine {
     }
 
     fn unload(&self) {
-        *self.worker.lock().unwrap() = None;
+        let mut idle = self.idle.lock().unwrap();
+        self.epoch.fetch_add(1, Ordering::AcqRel);
+        idle.clear();
+    }
+
+    /// One GPU worker at a time: parallel CPU workers only help on the CPU.
+    fn max_parallel(&self, _voice: &str) -> usize {
+        let c = self.config.lock().unwrap();
+        if c.gpu && self.gpu_error.lock().unwrap().is_none() {
+            1
+        } else {
+            c.parallel.max(1)
+        }
+    }
+
+    fn set_parallel(&self, jobs: usize) {
+        self.config.lock().unwrap().parallel = jobs.max(1);
+        self.idle.lock().unwrap().truncate(jobs.max(1));
     }
 
     fn gpu_fallback(&self) -> Option<String> {
@@ -302,6 +330,7 @@ for line in sys.stdin:
                 file: "af_heart.bin".into(),
             }],
             threads: 1,
+            parallel: 1,
             gpu: true,
             model_rate: 24_000,
         });

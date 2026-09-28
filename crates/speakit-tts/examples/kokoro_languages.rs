@@ -46,7 +46,7 @@ fn main() {
     }).collect();
     let engine = KokoroEngine::new(KokoroConfig {
         model_id: model.id.clone(), model_name: model.name.clone(), voice_prefix: model.voice_prefix.clone(),
-        model_file: installed.model_file.clone(), worker_bin, voices, threads: 4, gpu: false, model_rate: model.sample_rate,
+        model_file: installed.model_file.clone(), worker_bin, voices, threads: 4, parallel: 1, gpu: false, model_rate: model.sample_rate,
     });
     let listed = engine.voices().unwrap();
     println!("engine lists {} voices", listed.len());

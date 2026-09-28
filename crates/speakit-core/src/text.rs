@@ -105,11 +105,13 @@ impl Normalized {
 }
 
 /// Markdown syntax found by [`markdown_markup`]: chars that must not be
-/// spoken, and line breaks that end a block (heading, list item) and so
-/// read as a paragraph break.
+/// spoken, line breaks that end a block (heading, list item, table row) and
+/// so read as a paragraph break, and table cell separators, read as a
+/// sentence end.
 struct Markup {
     hidden: Vec<bool>,
     block_end: Vec<bool>,
+    cell_break: Vec<bool>,
 }
 
 /// Flags Markdown syntax characters (`## `, `**`, `` ` ``, `- `, `> `,
@@ -119,6 +121,7 @@ fn markdown_markup(chars: &[(usize, char)]) -> Markup {
     let n = chars.len();
     let mut hidden = vec![false; n];
     let mut block_end = vec![false; n];
+    let mut cell_break = vec![false; n];
     let c = |i: usize| chars.get(i).map(|&(_, c)| c);
     let is_space = |ch: Option<char>| ch.is_none_or(|ch| ch == ' ' || ch == '\t');
 
@@ -179,10 +182,18 @@ fn markdown_markup(chars: &[(usize, char)]) -> Markup {
                 hidden[p] = true;
             }
             if trimmed.starts_with('|') {
-                for i in p..end {
-                    if c(i) == Some('|') {
-                        hidden[i] = true;
-                    }
+                // Table row: its own paragraph, with a sentence pause between cells.
+                let pipes: Vec<usize> = (p..end).filter(|&i| c(i) == Some('|')).collect();
+                let last = (p..end).rev().find(|&i| !matches!(c(i), Some(' ' | '\t' | '\r')));
+                for &i in &pipes {
+                    hidden[i] = true;
+                    cell_break[i] = i != pipes[0] && Some(i) != last;
+                }
+                if start > 0 {
+                    block_end[start - 1] = true;
+                }
+                if end < n {
+                    block_end[end] = true;
                 }
             }
         }
@@ -238,7 +249,7 @@ fn markdown_markup(chars: &[(usize, char)]) -> Markup {
         }
         i += 1;
     }
-    Markup { hidden, block_end }
+    Markup { hidden, block_end, cell_break }
 }
 
 /// Normalizes line endings, control characters, and repeated layout
@@ -255,6 +266,15 @@ pub fn normalize(original: &str) -> Normalized {
     let markup = markdown_markup(&all);
     let mut chars = all.iter().copied().enumerate().peekable();
     while let Some((k, (i, c))) = chars.next() {
+        if markup.cell_break[k] {
+            // End the cell like a sentence unless it already ends in one.
+            if pending_newlines == 0 && !text.trim_end().ends_with(['.', '!', '?', ':', ';']) && !text.is_empty() {
+                origin.push((text.len(), i));
+                text.push('.');
+                pending_space = None;
+            }
+            continue;
+        }
         if markup.hidden[k] {
             continue;
         }
@@ -344,6 +364,18 @@ mod tests {
         assert_eq!(n.text, "Steps:\n\n1. First\n\n2. Second");
         let n = normalize("snake_case, 2*3, C# and #1, ~5 min, __under__ ~~gone~~");
         assert_eq!(n.text, "snake_case, 2*3, C# and #1, ~5 min, under gone");
+    }
+
+    #[test]
+    fn pauses_between_table_cells_and_rows() {
+        let src = "| Segment | Buyer | Note |\n|---|---|---|\n| Regional payer | SNP lead | Good first cohort. |\n| MCO |  | Varies |\n\nAfter.";
+        let n = normalize(src);
+        assert_eq!(
+            n.text,
+            "Segment. Buyer. Note\n\nRegional payer. SNP lead. Good first cohort.\n\nMCO. Varies\n\nAfter."
+        );
+        let doc = crate::document::SpeechDocument::new(src.into(), 300);
+        assert!(doc.segments.len() >= 8, "each cell is its own sentence");
     }
 
     #[test]

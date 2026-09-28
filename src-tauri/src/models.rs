@@ -125,13 +125,28 @@ fn worker_for(family: Family) -> &'static str {
     }
 }
 
-/// Inference threads for a profile (spec §8.2).
+fn cpu_threads() -> usize {
+    std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4)
+}
+
+/// Inference threads per worker for a profile (spec §8.2). Past about four
+/// threads one worker stops getting faster, so Performance adds workers
+/// (`parallel_for`) instead of threads.
 pub fn threads_for(profile: ResourceProfile) -> usize {
-    let p = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
+    let p = cpu_threads();
     match profile {
         ResourceProfile::Eco => 2.min(p.saturating_sub(1)).max(1),
         ResourceProfile::Balanced => 4.min(p / 2).max(1),
-        ResourceProfile::Performance => p.saturating_sub(1).max(1),
+        ResourceProfile::Performance => (p.saturating_sub(1) / parallel_for(profile)).clamp(1, 4),
+    }
+}
+
+/// Segments generated at once. Measured on a 12-thread i5-1334U with
+/// Kokoro: 1 worker × 11 threads kept up with 0.64× speed, 3 × 3 with 1.02×.
+pub fn parallel_for(profile: ResourceProfile) -> usize {
+    match profile {
+        ResourceProfile::Performance => (cpu_threads() / 4).clamp(1, 3),
+        _ => 1,
     }
 }
 
@@ -172,6 +187,7 @@ fn engine_for(model: &ModelSpec, installed: &Installed, profile: ResourceProfile
                 worker_bin: worker_bin(worker_for(model.family))?,
                 voices,
                 threads: threads_for(profile),
+                parallel: parallel_for(profile),
                 gpu: processor == Processor::Gpu,
                 model_rate: model.sample_rate,
             })))

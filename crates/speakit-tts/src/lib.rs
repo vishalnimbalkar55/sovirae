@@ -93,6 +93,13 @@ pub trait Engine: Send + Sync {
     fn unload(&self) {}
     /// Applies an inference thread budget (spec §8.2), where supported.
     fn set_threads(&self, _threads: usize) {}
+    /// How many `synthesize` calls for `voice` may run at once. Engines that
+    /// serialize internally keep the default of one.
+    fn max_parallel(&self, _voice: &str) -> usize {
+        1
+    }
+    /// Sets how many segments may be generated at once, where supported.
+    fn set_parallel(&self, _jobs: usize) {}
     /// Device used for `voice`; engines that own one device ignore it.
     fn device_for(&self, _voice: &str) -> &'static str {
         self.device()
@@ -194,6 +201,16 @@ impl Engine for Registry {
     fn set_threads(&self, threads: usize) {
         for m in self.all_models() {
             m.set_threads(threads);
+        }
+    }
+
+    fn max_parallel(&self, voice: &str) -> usize {
+        self.route(voice).map_or(1, |engine| engine.max_parallel(voice))
+    }
+
+    fn set_parallel(&self, jobs: usize) {
+        for m in self.all_models() {
+            m.set_parallel(jobs);
         }
     }
 

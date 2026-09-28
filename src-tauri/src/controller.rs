@@ -5,7 +5,7 @@
 //! receives snapshots.
 
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
@@ -126,7 +126,11 @@ enum Msg {
     Synth(SynthDone),
 }
 
+/// Most synthesis jobs run at once, whatever the engine allows.
+const MAX_PARALLEL_JOBS: usize = 3;
+
 struct SynthJob {
+    job: u64,
     generation: u64,
     segment: usize,
     text: String,
@@ -136,6 +140,7 @@ struct SynthJob {
 }
 
 struct SynthDone {
+    job: u64,
     generation: u64,
     segment: usize,
     result: Result<Pcm, TtsError>,
@@ -191,16 +196,22 @@ pub fn spawn<H: Host>(engine: Arc<dyn Engine>, config: Config, host: H) -> Contr
     let (tx, rx) = mpsc::channel();
     let (job_tx, job_rx) = mpsc::channel::<SynthJob>();
 
-    let synth_engine = engine.clone();
-    let synth_tx = tx.clone();
-    std::thread::Builder::new()
-        .name("sovirae-synth".into())
-        .spawn(move || {
-            for job in job_rx {
+    // One thread per job the engine may run at once; `schedule` never has
+    // more jobs in flight than the engine allows.
+    let job_rx = Arc::new(Mutex::new(job_rx));
+    for n in 0..MAX_PARALLEL_JOBS {
+        let synth_engine = engine.clone();
+        let synth_tx = tx.clone();
+        let job_rx = job_rx.clone();
+        std::thread::Builder::new()
+            .name(format!("sovirae-synth-{n}"))
+            .spawn(move || loop {
+                let Ok(job) = job_rx.lock().unwrap().recv() else { break };
                 let started = Instant::now();
                 let result =
                     synth_engine.synthesize(&job.text, &job.voice, job.sample_rate, &job.cancel);
                 let done = SynthDone {
+                    job: job.job,
                     generation: job.generation,
                     segment: job.segment,
                     result,
@@ -209,9 +220,9 @@ pub fn spawn<H: Host>(engine: Arc<dyn Engine>, config: Config, host: H) -> Contr
                 if synth_tx.send(Msg::Synth(done)).is_err() {
                     break;
                 }
-            }
-        })
-        .expect("spawn synthesis thread");
+            })
+            .expect("spawn synthesis thread");
+    }
 
     let worker = Worker {
         engine,
@@ -223,7 +234,8 @@ pub fn spawn<H: Host>(engine: Arc<dyn Engine>, config: Config, host: H) -> Contr
         stash: None,
         next_id: 1,
         generation: 0,
-        in_flight: None,
+        in_flight: Vec::new(),
+        next_job: 1,
         rate: config.rate,
         volume: config.volume,
         voice: config.voice,
@@ -253,7 +265,10 @@ struct Worker<H: Host> {
     stash: Option<Session>,
     next_id: u64,
     generation: u64,
-    in_flight: Option<(u64, usize, CancelToken)>,
+    /// (job, segment, cancel) for each synthesis job of this generation
+    /// still running; cleared whenever the generation changes.
+    in_flight: Vec<(u64, usize, CancelToken)>,
+    next_job: u64,
     rate: f32,
     volume: f32,
     voice: Option<String>,
@@ -609,7 +624,7 @@ impl<H: Host> Worker<H> {
     }
 
     fn cancel_in_flight(&mut self) {
-        if let Some((_, _, token)) = self.in_flight.take() {
+        for (_, _, token) in self.in_flight.drain(..) {
             token.cancel();
         }
     }
@@ -626,10 +641,22 @@ impl<H: Host> Worker<H> {
         if s.status == PlaybackStatus::Completed {
             s.status = PlaybackStatus::Buffering;
         }
-        // A seek outranks speculative lookahead (spec §8.4).
-        if let Some((_, busy, _)) = &self.in_flight {
-            if *busy != seg && !matches!(s.segs[seg], Seg::Ready(_)) {
-                self.cancel_in_flight();
+        // A seek outranks speculative lookahead (spec §8.4): keep only jobs
+        // for the target and the segments right after it.
+        if !matches!(s.segs[seg], Seg::Ready(_)) && !self.in_flight.iter().any(|(_, busy, _)| *busy == seg) {
+            let window = seg..seg + self.parallel_jobs();
+            self.in_flight.retain(|(_, busy, token)| {
+                let keep = window.contains(busy);
+                if !keep {
+                    token.cancel();
+                }
+                keep
+            });
+            // Every job left is just ahead of the target; free one for it.
+            if self.in_flight.len() >= self.parallel_jobs() {
+                if let Some(i) = (0..self.in_flight.len()).max_by_key(|&i| self.in_flight[i].1) {
+                    self.in_flight.remove(i).2.cancel();
+                }
             }
         }
         self.feed_player();
@@ -714,16 +741,28 @@ impl<H: Host> Worker<H> {
         }
     }
 
-    /// Bounded lookahead: one synthesis job at a time, stopping at the
-    /// duration or byte budget of the active resource profile.
+    /// Jobs the current voice's engine may run at once.
+    fn parallel_jobs(&self) -> usize {
+        self.session
+            .as_ref()
+            .map_or(1, |s| self.engine.max_parallel(&s.voice.id))
+            .clamp(1, MAX_PARALLEL_JOBS)
+    }
+
+    /// Bounded lookahead: up to `parallel_jobs` synthesis jobs at once, in
+    /// reading order, stopping at the duration or byte budget of the active
+    /// resource profile.
     fn schedule(&mut self) {
-        if self.in_flight.is_some() {
-            return;
-        }
+        while self.in_flight.len() < self.parallel_jobs() && self.schedule_one() {}
+    }
+
+    /// Starts a job for the next segment that needs one; false when none may.
+    fn schedule_one(&mut self) -> bool {
         let sr = self.sample_rate as u64;
         let budget = self.profile.pcm_budget_bytes() as u64;
         let lookahead = (self.profile.lookahead_ms() as f64 * self.rate as f64 / 1000.0 * sr as f64) as u64;
-        let Some(s) = self.session.as_mut() else { return };
+        let in_flight = &self.in_flight;
+        let Some(s) = self.session.as_mut() else { return false };
         let cur = s.pos.0.min(s.segs.len().saturating_sub(1));
 
         // Release PCM behind the listener first when over budget.
@@ -741,7 +780,7 @@ impl<H: Host> Worker<H> {
             i += 1;
         }
         if bytes > budget {
-            return;
+            return false;
         }
 
         let mut ahead = 0u64;
@@ -753,6 +792,7 @@ impl<H: Host> Worker<H> {
                     ahead += (v.len() as u64).saturating_sub(skip);
                 }
                 Seg::Failed => {}
+                _ if in_flight.iter().any(|(_, seg, _)| *seg == i) => {}
                 Seg::Pending | Seg::Evicted(_) => {
                     target = Some(i);
                     break;
@@ -760,12 +800,15 @@ impl<H: Host> Worker<H> {
             }
         }
         // The segment the player needs next is always allowed.
-        let Some(target) = target else { return };
+        let Some(target) = target else { return false };
         if ahead >= lookahead && target != s.queued_upto {
-            return;
+            return false;
         }
         let token = CancelToken::default();
+        let job_id = self.next_job;
+        self.next_job += 1;
         let job = SynthJob {
+            job: job_id,
             generation: self.generation,
             segment: target,
             text: s.doc.segment_text(target).to_string(),
@@ -773,15 +816,17 @@ impl<H: Host> Worker<H> {
             sample_rate: self.sample_rate,
             cancel: token.clone(),
         };
-        if self.job_tx.send(job).is_ok() {
-            self.in_flight = Some((self.generation, target, token));
+        if self.job_tx.send(job).is_err() {
+            return false;
         }
+        self.in_flight.push((job_id, target, token));
+        true
     }
 
     fn on_synth(&mut self, d: SynthDone) {
-        if self.in_flight.as_ref().is_some_and(|(g, seg, _)| *g == d.generation && *seg == d.segment) {
-            self.in_flight = None;
-        }
+        // Jobs that ran alongside this one, which shared the processor.
+        let concurrent = self.in_flight.len().max(1);
+        self.in_flight.retain(|(job, _, _)| *job != d.job);
         // Stale results from a replaced or restored session are discarded.
         if d.generation != self.generation {
             return;
@@ -791,8 +836,9 @@ impl<H: Host> Worker<H> {
         match d.result {
             Ok(pcm) => {
                 let audio_ms = pcm.duration_ms().max(1);
-                // Real-time factor at the current speed (spec §8.3).
-                let rtf = d.elapsed.as_millis() as f64 / audio_ms as f64;
+                // Real-time factor at the current speed (spec §8.3), per
+                // job slot when several segments are generated at once.
+                let rtf = d.elapsed.as_millis() as f64 / audio_ms as f64 / concurrent as f64;
                 if rtf * rate as f64 > 1.0 {
                     self.slow_segments += 1;
                 } else {
@@ -1191,7 +1237,7 @@ mod tests {
         let registry = Arc::new(speakit_tts::Registry::new(speakit_tts::system_engine()));
         registry.set_model(&model.voice_prefix, Some(Arc::new(KokoroEngine::new(KokoroConfig {
             model_id: model.id.clone(), model_name: model.name.clone(), voice_prefix: model.voice_prefix.clone(),
-            model_file: installed.model_file.clone(), worker_bin, voices, threads: 4, gpu, model_rate: model.sample_rate,
+            model_file: installed.model_file.clone(), worker_bin, voices, threads: 4, parallel: 1, gpu, model_rate: model.sample_rate,
         }))));
         let host = TestHost::default();
         let c = spawn(registry.clone(), Config { match_language: true, rate: 1.0, volume: 0.15, voice: Some("kokoro:af_heart".into()), profile: ResourceProfile::Balanced }, host.clone());
@@ -1275,7 +1321,7 @@ mod tests {
         let registry = speakit_tts::Registry::new(speakit_tts::system_engine());
         registry.set_model(&model.voice_prefix, Some(Arc::new(KokoroEngine::new(KokoroConfig {
             model_id: model.id.clone(), model_name: model.name.clone(), voice_prefix: model.voice_prefix.clone(),
-            model_file: installed.model_file.clone(), worker_bin: "unused".into(), voices, threads: 1, gpu: false, model_rate: model.sample_rate,
+            model_file: installed.model_file.clone(), worker_bin: "unused".into(), voices, threads: 1, parallel: 1, gpu: false, model_rate: model.sample_rate,
         }))));
         let listed: Vec<String> = registry.voices().unwrap().into_iter()
             .filter(|v| v.model == model.id).map(|v| format!("{} ({}, {})", v.name, v.language, v.gender.unwrap_or_default())).collect();

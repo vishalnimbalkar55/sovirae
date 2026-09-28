@@ -55,6 +55,7 @@ fn main() {
         worker_bin,
         voices,
         threads,
+        parallel: 1,
         gpu,
         model_rate: model.sample_rate,
     });
