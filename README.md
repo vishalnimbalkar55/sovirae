@@ -106,24 +106,37 @@ share it, sign and notarize with an Apple Developer ID.
 
 ## Publishing a release
 
-Installers for macOS (Apple Silicon) and Windows (x64) are built by GitHub
-Actions and attached to a GitHub Release when a version tag is pushed. The
-tag must match the version in `src-tauri/tauri.conf.json` (keep
-`package.json` and the workspace `Cargo.toml` in step with it):
+Releases are built by hand: the macOS app on a Mac, the Windows installer
+on a Windows PC, then both uploaded to one GitHub Release with the GitHub
+CLI (`brew install gh` or `winget install GitHub.cli`, then `gh auth login`
+once).
 
-```bash
-git tag v0.1.0 && git push origin v0.1.0
-```
+1. Bump the version in `src-tauri/tauri.conf.json`, `package.json`, and the
+   workspace `Cargo.toml`, commit, and tag:
 
-About 20 minutes later the release appears under *Releases* with the DMG,
-the Windows installer and portable zip, and the Chrome extension zip, plus
-notes on opening unsigned builds. *Actions › Release › Run workflow* builds
-the same files without publishing (they appear under the run's Artifacts);
-its **gpu** option includes the NVIDIA CUDA libraries in the Windows build.
-The workflow lives in `.github/workflows/release.yml`.
+   ```bash
+   git tag -a v0.1.1 -m "Sovirae 0.1.1" && git push origin main v0.1.1
+   ```
 
-The builds are ad-hoc signed. To ship without first-launch warnings, sign
-and notarize the macOS app with an Apple Developer ID and sign the Windows
+2. On the Mac, build and create the release with the macOS files and the
+   extension zip:
+
+   ```bash
+   npm run build:all -- --mac
+   gh release create v0.1.1 --verify-tag --title "Sovirae 0.1.1" --generate-notes build/macos/*.dmg build/macos/*_macos.zip build/*_chrome-extension.zip
+   ```
+
+3. On the Windows PC, build and add the installer and portable zip to the
+   same release:
+
+   ```powershell
+   npm run build:all
+   gh release upload v0.1.1 build\windows\*-setup.exe build\windows\*-portable.zip
+   ```
+
+The builds are ad-hoc signed, so macOS and Windows warn once on first
+launch; say so in the release notes. To ship without the warnings, sign and
+notarize the macOS app with an Apple Developer ID and sign the Windows
 installer with a code-signing certificate.
 
 ## Studio
