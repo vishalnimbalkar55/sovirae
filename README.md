@@ -1,11 +1,105 @@
 # Sovirae
 
-Local read-aloud app with a floating player and a Chrome extension. Speech is
-generated on this computer: macOS system voices out of the box, and Kokoro-82M
-or Kyutai Pocket TTS neural voices after a one-time download.
+Read-aloud for your computer: Markdown files, docs, blog posts, emails, or any
+text you copy or select, spoken by an AI voice that runs entirely on your own
+machine. Nothing leaves your device.
 
-The product spec lives in [`spec/`](spec/README.md); progress is tracked in the
-step files there.
+**[Download the latest release](https://github.com/vishalnimbalkar55/sovirae/releases/latest)**
+for macOS (Apple Silicon) and Windows (x64).
+
+## Why I built it
+
+I built Sovirae because of how I work. While coding and researching, AI tools
+hand me long answers as Markdown files, and on top of that there are blogs,
+docs, and emails I want to get through. Reading all of it properly takes deep
+focus, and often I need to do something else at the same time. So I made an
+app that reads it to me: paste a Markdown file, select a paragraph in the
+browser, or copy an email, and a local AI voice reads it while I keep
+working. Markdown syntax is stripped, so headings, links, and code marks are
+not read out as symbols.
+
+## Screenshots
+
+**Read.** Paste or type text and listen. The word count and listening time
+update as you type.
+
+![Read screen](docs/screenshots/read.jpg)
+
+**Floating player.** Stays above other windows while you work: pause, skip
+ten seconds, change speed without changing pitch, and a live waveform.
+
+![Floating player](docs/screenshots/player.jpg)
+
+**Expanded player.** Shows the text and follows the sentence being read.
+
+![Expanded player](docs/screenshots/player-expanded.jpg)
+
+**Voices.** System voices out of the box; download Kokoro or Pocket TTS once
+and use them offline. Filter by language and gender, and preview before
+choosing.
+
+![Voices screen](docs/screenshots/voices.jpg)
+
+**Studio.** Turn a script into a recording, paragraph by paragraph, and
+download it as WAV.
+
+![Studio screen](docs/screenshots/studio.jpg)
+
+**Settings.** Theme, reading font, player style, playback, resource profile,
+pronunciation rules, and background behaviour.
+
+![Settings screen](docs/screenshots/settings.jpg)
+
+## What it does
+
+- **Reads anything you give it.** Paste text, press a global shortcut to read
+  the clipboard, or use the Chrome extension to read a selection or a block
+  you pick on any page. Markdown is cleaned up before it is spoken.
+- **Runs locally.** macOS and Windows system voices work immediately. Kokoro-82M
+  (55 voices, 8 languages) and Kyutai Pocket TTS (27 voices each in English,
+  French, German, Spanish, Italian, Portuguese, and Dutch) download once from
+  inside the app and then run on your CPU, or on the GPU on Apple Silicon and
+  NVIDIA.
+- **Stays out of your way.** A floating player with global shortcuts, a menu
+  bar icon, and resource profiles that keep the rest of the machine
+  responsive: capped inference threads, below-normal worker priority, and the
+  voice model unloaded after a few idle minutes.
+- **Reads the way you want.** Speed from 0.5× to 3× with natural pitch,
+  sentence snapping, a voice per language for web pages, and pronunciation
+  rules for names and acronyms.
+- **Studio.** Script projects with iterations, their own voice, pauses and
+  approximate expressions, a prompt you can give ChatGPT or Claude to improve
+  the script, and WAV export of the first part or the whole recording.
+
+## Install
+
+Download from the [releases page](https://github.com/vishalnimbalkar55/sovirae/releases/latest).
+
+| File | For |
+|---|---|
+| `Sovirae_<version>_aarch64.dmg` | macOS 13 or later on Apple Silicon. Drag Sovirae to Applications. |
+| `Sovirae_<version>_x64-setup.exe` | Windows 10 (1803 or later) or 11, 64-bit. Installs for the current user. |
+| `Sovirae_<version>_x64-portable.zip` | Windows, no installation: unzip and run `Sovirae.exe`. |
+| `Sovirae_<version>_chrome-extension.zip` | The Chrome extension, for *Load unpacked* (the app also carries a copy). |
+
+The builds are not signed with a developer certificate, so each system warns
+once on first launch. On macOS, open *System Settings › Privacy & Security*
+and choose **Open Anyway**; on Windows, choose **More info › Run anyway** on
+the SmartScreen notice.
+
+Kokoro voices on macOS need `espeak-ng` (`brew install espeak-ng`); on
+Windows it is included. Neural voices are downloaded inside the app under
+Voices.
+
+## How it works
+
+Tauri 2 with a React UI and a Rust core. Each neural model runs in its own
+worker process (ONNX Runtime for Kokoro, a Rust port of Kyutai's model on
+Candle for Pocket TTS), so a crash or a hang never takes the app down and
+cancelling a reading is immediate. A session controller owns the sentence
+index and the audio schedule: the first sentence is synthesized first, the
+rest a bounded distance ahead of playback. The product spec lives in
+[`spec/`](spec/README.md); progress is tracked in the step files there.
 
 ## Build the complete project
 
@@ -144,11 +238,12 @@ installer with a code-signing certificate.
 The Studio screen turns a script into a downloadable recording. Create a
 project, paste a script, choose a model and voice for it, and generate the
 first part. Listen, accept, and the remaining paragraphs are generated.
-Scripts can use `[pause]` and `[pause 2s]`; a model that understands its own
-tags (listed under `features` in the catalog) shows them next to the editor,
-and "Copy prompt" produces a prompt for ChatGPT or Claude that only uses
-those markers. Projects and their WAV files live in the app data folder under
-`studio/`.
+Scripts can use `[pause]`, `[pause 2s]`, and expressions such as `[laugh]`
+or `[clear throat]`, which every voice approximates with a spoken sound; a
+model that understands its own tags (listed under `features` in the catalog)
+shows them next to the editor instead. "Copy prompt" produces a prompt for
+ChatGPT or Claude that only uses those markers. Projects and their WAV files
+live in the app data folder under `studio/`.
 
 ## Logs
 
@@ -212,3 +307,4 @@ kept outside the repository in
 | `workers/speakit-pocket-worker` (`sovirae-pocket-worker`) | Isolated Pocket TTS inference process (Rust port of Kyutai's model) |
 | `workers/speakit-native-host` (`sovirae-native-host`) | Chrome native messaging relay |
 | `ext/` | Chrome MV3 extension |
+| `docs/screenshots/` | The images in this README, taken from the UI preview with sample data |
