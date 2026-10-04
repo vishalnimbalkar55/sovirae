@@ -32,6 +32,9 @@ pub struct AppState {
     pub document: Mutex<Option<DocumentView>>,
     pub shortcuts: shortcuts::ShortcutManager,
     pub playback_active: AtomicBool,
+    /// The main window waits for its page to finish loading before it is
+    /// shown, so a launch never presents a blank window.
+    pub show_pending: AtomicBool,
     pub bridge: bridge::Bridge,
     pub studio: studio::Studio,
 }
@@ -147,7 +150,9 @@ pub(crate) fn clamp_player<R: Runtime>(app: &AppHandle<R>, w: &WebviewWindow<R>)
 pub(crate) fn show_main<R: Runtime>(app: &AppHandle<R>, screen: Option<&str>) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.unminimize();
-        let _ = w.show();
+        if let Err(e) = w.show() {
+            log::error!("main: show failed: {e}");
+        }
         let _ = w.set_focus();
     }
     if let Some(screen) = screen {
@@ -164,7 +169,7 @@ pub(crate) fn exit<R: Runtime>(app: &AppHandle<R>) {
 }
 
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         // Single-instance must be registered first; a second launch focuses
         // the running app instead of starting another process.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app, None)))
@@ -223,17 +228,28 @@ pub fn run() {
                 shortcuts: Default::default(),
                 models: Default::default(),
                 playback_active: AtomicBool::new(false),
+                show_pending: AtomicBool::new(!start_hidden),
                 bridge: Default::default(),
                 studio: Default::default(),
             });
 
+            log::info!("Sovirae {} started", app.package_info().version);
             tray::create(&handle)?;
 
             if let Some(player) = app.get_webview_window("player") {
                 let _ = player.set_always_on_top(topmost);
             }
+            // Shown from `on_page_load` below; if the page never reports a
+            // finished load, the window still appears so the failure is seen.
             if !start_hidden {
-                show_main(&handle, None);
+                let h = handle.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(2500));
+                    if h.try_state::<AppState>().is_some_and(|s| s.show_pending.swap(false, Ordering::SeqCst)) {
+                        log::warn!("main: page did not finish loading; showing anyway");
+                        show_main(&h, None);
+                    }
+                });
             }
             // Registration round-trips through the main thread.
             let h = handle.clone();
@@ -242,6 +258,30 @@ pub fn run() {
             std::thread::spawn(move || bridge::apply_enabled(&h));
             Ok(())
         })
+        // A window that never reports a finished load, or whose WebKit
+        // content process died, is the cause of a blank window; both are
+        // logged, and a dead content process is reloaded.
+        .on_page_load(|webview, payload| match payload.event() {
+            tauri::webview::PageLoadEvent::Started => log::info!("{}: loading {}", webview.label(), payload.url()),
+            tauri::webview::PageLoadEvent::Finished => {
+                log::info!("{}: loaded {}", webview.label(), payload.url());
+                let pending = webview.label() == "main"
+                    && webview
+                        .try_state::<AppState>()
+                        .is_some_and(|s| s.show_pending.swap(false, Ordering::SeqCst));
+                if pending {
+                    show_main(webview.app_handle(), None);
+                }
+            }
+        });
+    #[cfg(target_os = "macos")]
+    let builder = builder.on_web_content_process_terminate(|webview| {
+        log::warn!("{}: web content process terminated; reloading", webview.label());
+        if let Err(e) = webview.reload() {
+            log::error!("{}: reload failed: {e}", webview.label());
+        }
+    });
+    builder
         .on_window_event(|window, event| match (window.label(), event) {
             ("main", WindowEvent::CloseRequested { api, .. }) => {
                 let app = window.app_handle();
@@ -281,6 +321,7 @@ pub fn run() {
             commands::dismiss_player,
             commands::open_main,
             commands::exit_app,
+            commands::report_ui_error,
             models::list_models,
             models::download_model,
             models::cancel_download,

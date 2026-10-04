@@ -1,0 +1,32 @@
+/* Fallback shown by ErrorBoundary; shared by the main and player windows. */
+.crash {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 24px;
+  color: var(--ink);
+  font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+.crash-title { margin: 0; font-weight: 600; font-size: 16px; }
+.crash-sub { margin: 0; color: var(--ink-2); }
+.crash button {
+  margin-top: 4px;
+  padding: 6px 14px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.crash-detail {
+  margin: 8px 0 0;
+  max-width: 100%;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--ink-2);
+  font-size: 11px;
+  user-select: text;
+}

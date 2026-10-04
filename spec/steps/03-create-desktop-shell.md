@@ -20,6 +20,10 @@
 - Focus spike (macOS): the player appears without taking focus (`orderFrontRegardless`). Clicking its buttons still activates SpeakIt. Re-classing the window as a non-activating `NSPanel` crashed, because Tauri's window class is larger than `NSPanel`, so a different approach is needed.
 - Global shortcuts: Speak clipboard and Read selection are always registered; playback shortcuts are registered only during a reading (automated test confirms they are released after Stop). Not yet pressed in a live session.
 
+## Progress — 2026-10-04
+
+- Blank main window reported after a restart (not reproduced in 8 launches). The main window is now shown only after its page finishes loading, with a 2.5 s fallback that shows it anyway and logs a warning. Page loads, a dead WebKit content process (reloaded automatically), and uncaught UI errors are written to the log; both windows render a "Something went wrong" panel with Reload instead of a blank page.
+
 ## Relevant requirements
 
 - [4. Screen-by-screen behavior](../chunks/04-screens-and-settings.md)

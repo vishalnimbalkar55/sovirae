@@ -926,6 +926,7 @@ mod tests {
             shortcuts: Default::default(),
             models: Default::default(),
             playback_active: AtomicBool::new(false),
+            show_pending: AtomicBool::new(false),
             bridge: Default::default(),
             studio,
         });

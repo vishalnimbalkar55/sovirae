@@ -385,3 +385,10 @@ pub fn open_extension_folder(app: AppHandle) -> Result<(), String> {
     let folder = crate::bridge::extension_folder(&app).ok_or("The extension folder is missing from this build.")?;
     crate::platform::open_folder(&folder).map_err(|e| e.to_string())
 }
+
+/// Uncaught UI errors land in the app log so a blank window can be
+/// diagnosed after the fact (spec §14).
+#[tauri::command]
+pub fn report_ui_error(message: String) {
+    log::error!("ui: {message}");
+}

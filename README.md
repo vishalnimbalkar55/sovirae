@@ -87,6 +87,13 @@ once on first launch. On macOS, open *System Settings › Privacy & Security*
 and choose **Open Anyway**; on Windows, choose **More info › Run anyway** on
 the SmartScreen notice.
 
+On macOS you can skip the warning by clearing the quarantine flag after
+copying Sovirae to Applications:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Sovirae.app
+```
+
 Kokoro voices on macOS need `espeak-ng` (`brew install espeak-ng`); on
 Windows it is included. Neural voices are downloaded inside the app under
 Voices.
@@ -251,7 +258,8 @@ Warnings and errors (voice engine failures, GPU fallback reasons, download
 and bridge problems) are written to `sovirae.log` in the app's log folder:
 `~/Library/Logs/com.sovirae.desktop/` on macOS and
 `%LOCALAPPDATA%\com.sovirae.desktop\logs\` on Windows. The file is capped
-at 2 MB and one previous copy is kept.
+at 2 MB and one previous copy is kept. If a window ever opens blank, the
+log says whether its page loaded and what the interface reported.
 
 ## Everyday commands
 
