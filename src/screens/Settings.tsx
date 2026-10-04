@@ -5,9 +5,9 @@ import type { PlayerLine, ProcessorStatus, ResourceProfile, Settings } from "../
 import { Row, Section, Segmented, Slider, Switch } from "../lib/ui";
 
 const PROFILE_HINT: Record<ResourceProfile, string> = {
-  eco: "Prepares 8 seconds ahead with up to 32 MB of audio. Lightest on battery.",
-  balanced: "Prepares 15 seconds ahead with up to 64 MB of audio.",
-  performance: "Prepares 30 seconds ahead with up to 128 MB of audio.",
+  eco: "Prepares 8 seconds ahead with up to 32 MB of audio. A downloaded voice leaves memory after 2 idle minutes. Lightest on battery.",
+  balanced: "Prepares 15 seconds ahead with up to 64 MB of audio. A downloaded voice leaves memory after 5 idle minutes.",
+  performance: "Prepares 30 seconds ahead with up to 128 MB of audio. A downloaded voice leaves memory after 10 idle minutes.",
 };
 
 export default function SettingsScreen({ app }: { app: AppModel }) {

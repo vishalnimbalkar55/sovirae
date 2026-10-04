@@ -44,13 +44,18 @@ pub struct PocketConfig {
 
 pub struct PocketEngine {
     config: Mutex<PocketConfig>,
+    /// The loaded worker while no request runs. A busy worker is owned by
+    /// the call using it and returns here afterwards, so `unload` and
+    /// `set_threads` never wait for inference to finish.
     worker: Mutex<Option<WorkerProc>>,
+    /// Bumped by `unload`; a worker started before it is not returned.
+    epoch: AtomicU64,
     next_id: AtomicU64,
 }
 
 impl PocketEngine {
     pub fn new(config: PocketConfig) -> Self {
-        Self { config: Mutex::new(config), worker: Mutex::new(None), next_id: AtomicU64::new(1) }
+        Self { config: Mutex::new(config), worker: Mutex::new(None), epoch: AtomicU64::new(0), next_id: AtomicU64::new(1) }
     }
 
     fn spawn(&self, cancel: &CancelToken) -> Result<WorkerProc, TtsError> {
@@ -70,26 +75,24 @@ impl PocketEngine {
     /// Runs one request through the worker, starting it if needed, and
     /// returns model-rate samples.
     fn run(&self, text: &str, voice_file: &str, cancel: &CancelToken) -> Result<Vec<f32>, TtsError> {
-        let mut guard = self.worker.lock().unwrap();
-        if guard.is_none() {
-            *guard = Some(self.spawn(cancel)?);
-        }
-        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
-        let proc = guard.as_mut().unwrap();
-        if let Err(e) = proc.send(&serde_json::json!({ "id": id, "text": text, "voice": voice_file })) {
-            *guard = None;
-            return Err(e);
-        }
-        let frame = match proc.wait(id, cancel, SYNTH_TIMEOUT) {
-            Ok(f) => f,
-            Err(e) => {
-                // Cancelled or failed: generation does not stop on its own,
-                // so replace the worker (spec §8.4).
-                *guard = None;
-                return Err(e);
-            }
+        let epoch = self.epoch.load(Ordering::Acquire);
+        let taken = self.worker.lock().unwrap().take();
+        let mut proc = match taken {
+            Some(proc) => proc,
+            None => self.spawn(cancel)?,
         };
-        drop(guard);
+        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        // On a send or wait error (cancelled, crashed, hung) the worker is
+        // dropped, which kills it: generation does not stop on its own
+        // (spec §8.4).
+        proc.send(&serde_json::json!({ "id": id, "text": text, "voice": voice_file }))?;
+        let frame = proc.wait(id, cancel, SYNTH_TIMEOUT)?;
+        // The worker survives a failed request; an unload meanwhile wins.
+        let mut slot = self.worker.lock().unwrap();
+        if self.epoch.load(Ordering::Acquire) == epoch && slot.is_none() {
+            *slot = Some(proc);
+        }
+        drop(slot);
         if frame.status != 0 {
             return Err(TtsError::Engine(String::from_utf8_lossy(&frame.payload).into_owned()));
         }
@@ -145,7 +148,9 @@ impl Engine for PocketEngine {
     }
 
     fn unload(&self) {
-        *self.worker.lock().unwrap() = None;
+        let mut slot = self.worker.lock().unwrap();
+        self.epoch.fetch_add(1, Ordering::AcqRel);
+        *slot = None;
     }
 
     /// Takes effect on the next worker start.
@@ -162,6 +167,8 @@ impl Engine for PocketEngine {
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
+    use std::sync::Arc;
+    use std::time::Instant;
 
     /// A stand-in worker speaking the frame protocol. It echoes the
     /// request back as audio: one sample per character of text, and
@@ -251,6 +258,38 @@ for line in sys.stdin:
         assert!(e.synthesize("Salut.", "pocket-fr:alba", 24_000, &c).is_ok());
         // Nothing to say: no worker round trip.
         assert!(e.synthesize(" … ", "pocket-fr:alba", 24_000, &c).unwrap().samples.is_empty());
+    }
+
+    #[test]
+    fn unload_during_a_request_does_not_wait_and_drops_that_worker() {
+        let Some((e, _)) = engine() else { return };
+        let e = Arc::new(e);
+        let c = CancelToken::default();
+        e.synthesize("Salut.", "pocket-fr:alba", 24_000, &c).unwrap();
+        assert!(e.worker.lock().unwrap().is_some(), "worker kept between requests");
+
+        // The fake worker answers instantly, so run many requests while
+        // another thread unloads; unload must return promptly every time.
+        let busy = {
+            let e = e.clone();
+            std::thread::spawn(move || {
+                for _ in 0..50 {
+                    e.synthesize("Encore.", "pocket-fr:alba", 24_000, &CancelToken::default()).unwrap();
+                }
+            })
+        };
+        for _ in 0..20 {
+            let t = Instant::now();
+            e.unload();
+            assert!(t.elapsed() < Duration::from_millis(200), "unload waited for inference");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        busy.join().unwrap();
+        e.unload();
+        assert!(e.worker.lock().unwrap().is_none(), "nothing loaded after unload");
+        // The next request starts a fresh worker.
+        e.synthesize("Salut.", "pocket-fr:alba", 24_000, &c).unwrap();
+        assert!(e.worker.lock().unwrap().is_some());
     }
 
     #[test]

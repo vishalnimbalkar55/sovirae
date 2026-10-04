@@ -193,6 +193,11 @@ pub struct Config {
 }
 
 pub fn spawn<H: Host>(engine: Arc<dyn Engine>, config: Config, host: H) -> Controller {
+    spawn_inner(engine, config, host, None)
+}
+
+/// `model_idle` overrides the profile's idle model unload time (tests).
+fn spawn_inner<H: Host>(engine: Arc<dyn Engine>, config: Config, host: H, model_idle: Option<Duration>) -> Controller {
     let (tx, rx) = mpsc::channel();
     let (job_tx, job_rx) = mpsc::channel::<SynthJob>();
 
@@ -230,6 +235,8 @@ pub fn spawn<H: Host>(engine: Arc<dyn Engine>, config: Config, host: H) -> Contr
         host,
         player: None,
         idle_since: None,
+        last_synth: None,
+        model_idle,
         session: None,
         stash: None,
         next_id: 1,
@@ -260,6 +267,10 @@ struct Worker<H: Host> {
     host: H,
     player: Option<Player>,
     idle_since: Option<Instant>,
+    /// When the engine last generated a sentence; `None` once the model has
+    /// been unloaded (or was never used), so unload happens once per use.
+    last_synth: Option<Instant>,
+    model_idle: Option<Duration>,
     session: Option<Session>,
     /// A reading paused while a voice preview plays.
     stash: Option<Session>,
@@ -284,7 +295,13 @@ struct Worker<H: Host> {
 impl<H: Host> Worker<H> {
     fn run(mut self, rx: Receiver<Msg>) {
         loop {
-            let timeout = if self.session.is_some() { 40 } else { 500 };
+            // Playback needs fine-grained position updates; a paused or
+            // finished reading only waits for commands (spec §8.3 idle CPU).
+            let timeout = match self.session.as_ref().map(|s| s.status) {
+                Some(st) if st.is_active() => 40,
+                Some(_) => 250,
+                None => 500,
+            };
             match rx.recv_timeout(Duration::from_millis(timeout)) {
                 Ok(Msg::Cmd(Command::Shutdown)) => {
                     self.stop_all();
@@ -820,6 +837,7 @@ impl<H: Host> Worker<H> {
             return false;
         }
         self.in_flight.push((job_id, target, token));
+        self.last_synth = Some(Instant::now());
         true
     }
 
@@ -827,6 +845,7 @@ impl<H: Host> Worker<H> {
         // Jobs that ran alongside this one, which shared the processor.
         let concurrent = self.in_flight.len().max(1);
         self.in_flight.retain(|(job, _, _)| *job != d.job);
+        self.last_synth = Some(Instant::now());
         // Stale results from a replaced or restored session are discarded.
         if d.generation != self.generation {
             return;
@@ -944,14 +963,31 @@ impl<H: Host> Worker<H> {
         let changed = status != self.last_status;
         self.emit(changed);
 
-        // Release the audio device when idle (spec §8.2 idle unload).
+        // Release the audio device when no reading exists.
         if self.session.is_none() && self.player.is_some() {
             let since = *self.idle_since.get_or_insert_with(Instant::now);
             if since.elapsed() > Duration::from_secs(self.profile.idle_release_secs()) {
                 self.player = None;
-                // Idle model unload (spec §8.2): stops any inference worker.
-                self.engine.unload();
             }
+        }
+        self.unload_idle_model();
+    }
+
+    /// Idle model unload (spec §8.2): once no sentence has been generated
+    /// for the profile's idle time, the inference worker exits and frees its
+    /// memory. This also covers a reading left paused or finished with its
+    /// audio already prepared. The next sentence that needs the model starts
+    /// the worker again (a cold start, a few seconds on a slow computer).
+    fn unload_idle_model(&mut self) {
+        if !self.in_flight.is_empty() {
+            return;
+        }
+        let Some(last) = self.last_synth else { return };
+        let idle = self.model_idle.unwrap_or_else(|| Duration::from_secs(self.profile.model_idle_secs()));
+        if last.elapsed() >= idle {
+            self.last_synth = None;
+            self.engine.unload();
+            log::info!("voice model unloaded after {} s idle", idle.as_secs());
         }
     }
 
@@ -1112,6 +1148,72 @@ mod tests {
             let samples = (0..sample_rate).map(|i| 0.2 * (i as f32 * 440.0 * std::f32::consts::TAU / sample_rate as f32).sin()).collect();
             Ok(Pcm { samples, sample_rate })
         }
+    }
+
+    /// Instant one-second tones; counts loads (first synthesis after an
+    /// unload) and unloads, like a worker-backed engine.
+    #[derive(Default)]
+    struct CountingEngine {
+        loaded: std::sync::atomic::AtomicBool,
+        loads: std::sync::atomic::AtomicUsize,
+        unloads: std::sync::atomic::AtomicUsize,
+    }
+
+    impl Engine for CountingEngine {
+        fn id(&self) -> &'static str { "counting" }
+        fn device(&self) -> &'static str { "CPU" }
+        fn voices(&self) -> Result<Vec<VoiceInfo>, TtsError> {
+            Ok(vec![VoiceInfo {
+                id: "tone".into(), name: "Tone".into(), language: "en-US".into(), gender: None, model: "system".into(),
+                engine: "Test".into(), recommended: true, approximate_pronunciation: false,
+            }])
+        }
+        fn max_segment_chars(&self) -> usize { 400 }
+        fn synthesize(&self, _: &str, _: &str, sample_rate: u32, _: &CancelToken) -> Result<Pcm, TtsError> {
+            use std::sync::atomic::Ordering::Relaxed;
+            if !self.loaded.swap(true, Relaxed) {
+                self.loads.fetch_add(1, Relaxed);
+            }
+            let samples = (0..sample_rate).map(|i| 0.2 * (i as f32 * 440.0 * std::f32::consts::TAU / sample_rate as f32).sin()).collect();
+            Ok(Pcm { samples, sample_rate })
+        }
+        fn unload(&self) {
+            use std::sync::atomic::Ordering::Relaxed;
+            if self.loaded.swap(false, Relaxed) {
+                self.unloads.fetch_add(1, Relaxed);
+            }
+        }
+    }
+
+    #[test]
+    #[ignore = "opens the default output device (silently)"]
+    fn idle_model_is_unloaded_once_and_reloaded_on_demand() {
+        use std::sync::atomic::Ordering::Relaxed;
+        let host = TestHost::default();
+        let engine = Arc::new(CountingEngine::default());
+        let config = Config { match_language: false, rate: 1.0, volume: 0.0, voice: Some("tone".into()), profile: ResourceProfile::Balanced };
+        let c = spawn_inner(engine.clone(), config, host.clone(), Some(Duration::from_millis(700)));
+
+        // A one-sentence reading is fully prepared at once; pause it so the
+        // session stays alive while the model sits idle.
+        c.send(request("One short sentence."));
+        host.wait_for(Duration::from_secs(3), |s| s.status == PlaybackStatus::Playing).expect("plays");
+        c.send(Command::Pause);
+        host.wait_for(Duration::from_secs(1), |s| s.status == PlaybackStatus::Paused).expect("pauses");
+        assert_eq!(engine.loads.load(Relaxed), 1);
+        assert_eq!(engine.unloads.load(Relaxed), 0);
+
+        std::thread::sleep(Duration::from_millis(1500));
+        assert_eq!(engine.unloads.load(Relaxed), 1, "unloaded after the idle time, while paused");
+        std::thread::sleep(Duration::from_millis(800));
+        assert_eq!(engine.unloads.load(Relaxed), 1, "unload happens once");
+        assert_eq!(host.last().status, PlaybackStatus::Paused, "the reading is untouched");
+
+        // The next sentence that needs the model loads it again.
+        c.send(request("Another sentence after the model was unloaded."));
+        host.wait_for(Duration::from_secs(3), |s| s.session_id == 2 && s.status == PlaybackStatus::Playing).expect("plays again");
+        assert_eq!(engine.loads.load(Relaxed), 2, "reloaded on demand");
+        c.send(Command::Shutdown);
     }
 
     #[test]

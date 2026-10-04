@@ -40,6 +40,17 @@ impl ResourceProfile {
             Self::Performance => 180,
         }
     }
+
+    /// How long a voice model stays loaded after its last generated
+    /// sentence (spec §8.2 idle model unload). The worker process exits
+    /// and its memory is freed; the next sentence starts it again.
+    pub fn model_idle_secs(self) -> u64 {
+        match self {
+            Self::Eco => 120,
+            Self::Balanced => 300,
+            Self::Performance => 600,
+        }
+    }
 }
 
 /// Where downloaded voices run (spec §7.3). System voices are always run by
