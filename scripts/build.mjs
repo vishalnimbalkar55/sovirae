@@ -164,6 +164,9 @@ function install() {
 
 function test() {
   step("Running tests");
+  // The app's build script checks for libwebgpu_dawn.dylib, which the Kokoro
+  // worker's release build produces; on a fresh checkout nothing has yet.
+  if (HOST === "mac") run("cargo", ["build", "--release", "-p", "sovirae-kokoro-worker"]);
   run("npm", ["test"]);
 }
 

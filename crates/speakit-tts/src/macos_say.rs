@@ -250,7 +250,11 @@ mod gender_tests {
     #[test]
     fn reports_gender_from_macos() {
         let voices = SayEngine::new().voices().unwrap();
-        let samantha = voices.iter().find(|v| v.id == "Samantha").expect("Samantha is built in");
+        // Build machines and CI runners may lack the usual voices.
+        let Some(samantha) = voices.iter().find(|v| v.id == "Samantha") else {
+            eprintln!("Samantha is not installed on this Mac; skipping the gender check");
+            return;
+        };
         assert_eq!(samantha.gender.as_deref(), Some("female"));
         if let Some(daniel) = voices.iter().find(|v| v.id == "Daniel") {
             assert_eq!(daniel.gender.as_deref(), Some("male"));
