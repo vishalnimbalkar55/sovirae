@@ -10,7 +10,7 @@
 |---|---|---|---|
 | Kokoro-82M | Primary quality candidate | CPU baseline; GPU only for tested export/provider combinations | Pass pronunciation, startup, resource, and listening gates |
 | Piper | Lightweight alternative | CPU first | Pass quality checks and engine/voice distribution-license review |
-| Kyutai Pocket TTS (100M), English | Quality candidate (added 2026-09-26; English only by decision) | CPU; Kyutai reports no GPU gain on Apple Silicon | Pass listening gates; resolve per-voice licenses (two predefined voices are non-commercial) |
+| Kyutai Pocket TTS (100M), English, French, German, Spanish, Italian, Portuguese, Dutch | Quality candidate (added 2026-09-26; all languages 2026-10-04) | CPU; Kyutai reports no GPU gain on Apple Silicon | Pass listening gates; resolve per-voice licenses (two predefined voices are non-commercial) |
 | Platform system voice, where available | Optional zero-download fallback | OS-managed local speech | Test whether each OS exposes offline voices and controllable PCM; do not promise on Linux |
 
 Kokoro has 82 million parameters and Apache-2.0 model weights. That makes it a reasonable compact quality candidate, not proof of performance on the user's hardware. Its official example emits 24 kHz audio; use each artifact's actual declared format. [Model card](https://huggingface.co/hexgrad/Kokoro-82M)

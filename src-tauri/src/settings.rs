@@ -4,6 +4,7 @@
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
+use speakit_core::PronunciationRule;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -153,6 +154,8 @@ pub struct Settings {
     pub paired_extensions: Vec<String>,
     /// Read web pages with a voice in the page's language when one exists.
     pub match_page_language: bool,
+    /// "Say this as that" rules applied to the text sent to the voice.
+    pub pronunciations: Vec<PronunciationRule>,
 }
 
 impl Default for Settings {
@@ -179,9 +182,13 @@ impl Default for Settings {
             chrome_bridge: true,
             paired_extensions: Vec::new(),
             match_page_language: true,
+            pronunciations: Vec::new(),
         }
     }
 }
+
+/// Enough for a personal dictionary; keeps the per-sentence scan cheap.
+pub const MAX_PRONUNCIATIONS: usize = 500;
 
 pub const PLAYER_LINES: [&str; 5] = ["wave", "ticker", "steps", "meter", "breathing"];
 
@@ -213,6 +220,8 @@ impl Settings {
         }
         self.paired_extensions.retain(|id| id.len() == 32 && id.bytes().all(|b| (b'a'..=b'p').contains(&b)));
         self.paired_extensions.dedup();
+        self.pronunciations = speakit_core::pronounce::sanitize(std::mem::take(&mut self.pronunciations));
+        self.pronunciations.truncate(MAX_PRONUNCIATIONS);
         self
     }
 }
@@ -279,6 +288,13 @@ mod tests {
         assert_eq!(s.rate, 3.0);
         assert_eq!(s.theme, "system");
         assert!(s.keep_running);
+    }
+
+    #[test]
+    fn pronunciations_are_cleaned() {
+        let s: Settings = serde_json::from_str(r#"{"pronunciations": [{"from": " GIF ", "to": "jif"}, {"from": "", "to": "x"}, {"from": "gif", "to": "dup"}]}"#).unwrap();
+        let s = s.sanitize();
+        assert_eq!(s.pronunciations, vec![PronunciationRule::new("GIF", "jif")]);
     }
 
     #[test]

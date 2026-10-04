@@ -177,6 +177,9 @@ pub fn update_settings(app: AppHandle, state: State<'_, AppState>, patch: Value)
     if next.voice != before.voice {
         c.send(Command::SetVoice(next.voice.clone()));
     }
+    if next.pronunciations != before.pronunciations {
+        c.send(Command::SetPronunciations(next.pronunciations.clone()));
+    }
     if next.resource_profile != before.resource_profile {
         c.send(Command::SetProfile(next.resource_profile));
         state.engine.set_threads(crate::models::threads_for(next.resource_profile));

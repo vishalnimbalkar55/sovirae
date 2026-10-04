@@ -10,7 +10,9 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use speakit_audio::{Player, QueuedSegment};
+use speakit_core::pronounce;
 use speakit_core::text::truncate_to_limit;
+use speakit_core::PronunciationRule;
 use speakit_core::{
     validate, PlaybackSnapshot, PlaybackStatus, SourceKind, SourceReference, SpeakRequest,
     SpeechDocument, TextError, MAX_TEXT_UTF16,
@@ -44,6 +46,8 @@ pub enum Command {
     /// Prefer a voice in the page's language when one exists (Chrome).
     SetMatchLanguage(bool),
     SetProfile(ResourceProfile),
+    /// Replaces the pronunciation rules; applies to sentences not yet generated.
+    SetPronunciations(Vec<PronunciationRule>),
     Preview(String),
     Shutdown,
 }
@@ -190,6 +194,7 @@ pub struct Config {
     pub volume: f32,
     pub voice: Option<String>,
     pub profile: ResourceProfile,
+    pub pronunciations: Vec<PronunciationRule>,
 }
 
 pub fn spawn<H: Host>(engine: Arc<dyn Engine>, config: Config, host: H) -> Controller {
@@ -248,6 +253,7 @@ fn spawn_inner<H: Host>(engine: Arc<dyn Engine>, config: Config, host: H, model_
         voice: config.voice,
         match_language: config.match_language,
         profile: config.profile,
+        pronunciations: config.pronunciations,
         sample_rate: 48_000,
         active: false,
         last_emit: Instant::now(),
@@ -285,6 +291,7 @@ struct Worker<H: Host> {
     voice: Option<String>,
     match_language: bool,
     profile: ResourceProfile,
+    pronunciations: Vec<PronunciationRule>,
     sample_rate: u32,
     active: bool,
     last_emit: Instant,
@@ -371,6 +378,7 @@ impl<H: Host> Worker<H> {
             Command::SetVoice(v) => self.voice = v,
             Command::SetMatchLanguage(m) => self.match_language = m,
             Command::SetProfile(p) => self.profile = p,
+            Command::SetPronunciations(rules) => self.pronunciations = rules,
             Command::Shutdown => {}
         }
     }
@@ -828,7 +836,8 @@ impl<H: Host> Worker<H> {
             job: job_id,
             generation: self.generation,
             segment: target,
-            text: s.doc.segment_text(target).to_string(),
+            // Rules change what is spoken, not the text on screen.
+            text: pronounce::apply(s.doc.segment_text(target), &self.pronunciations),
             voice: s.voice.id.clone(),
             sample_rate: self.sample_rate,
             cancel: token.clone(),
@@ -1113,7 +1122,7 @@ mod tests {
     fn rejected_input_does_not_start_a_session() {
         let host = TestHost::default();
         let engine: Arc<dyn Engine> = Arc::from(speakit_tts::system_engine());
-        let c = spawn(engine, Config { match_language: true, rate: 1.0, volume: 0.0, voice: None, profile: ResourceProfile::Balanced }, host.clone());
+        let c = spawn(engine, Config { match_language: true, rate: 1.0, volume: 0.0, voice: None, profile: ResourceProfile::Balanced, pronunciations: Vec::new() }, host.clone());
         c.send(request("   \n "));
         std::thread::sleep(Duration::from_millis(200));
         let log = host.0.lock().unwrap();
@@ -1191,7 +1200,7 @@ mod tests {
         use std::sync::atomic::Ordering::Relaxed;
         let host = TestHost::default();
         let engine = Arc::new(CountingEngine::default());
-        let config = Config { match_language: false, rate: 1.0, volume: 0.0, voice: Some("tone".into()), profile: ResourceProfile::Balanced };
+        let config = Config { match_language: false, rate: 1.0, volume: 0.0, voice: Some("tone".into()), profile: ResourceProfile::Balanced, pronunciations: Vec::new() };
         let c = spawn_inner(engine.clone(), config, host.clone(), Some(Duration::from_millis(700)));
 
         // A one-sentence reading is fully prepared at once; pause it so the
@@ -1216,12 +1225,49 @@ mod tests {
         c.send(Command::Shutdown);
     }
 
+    /// Records the text each synthesis call receives.
+    struct SpyEngine(Mutex<Vec<String>>);
+
+    impl Engine for SpyEngine {
+        fn id(&self) -> &'static str { "spy" }
+        fn device(&self) -> &'static str { "CPU" }
+        fn voices(&self) -> Result<Vec<VoiceInfo>, TtsError> { CountingEngine::default().voices() }
+        fn max_segment_chars(&self) -> usize { 400 }
+        fn synthesize(&self, text: &str, _: &str, sample_rate: u32, _: &CancelToken) -> Result<Pcm, TtsError> {
+            self.0.lock().unwrap().push(text.to_string());
+            Ok(Pcm { samples: vec![0.0; sample_rate as usize / 10], sample_rate })
+        }
+    }
+
+    #[test]
+    #[ignore = "opens the default output device (silently)"]
+    fn pronunciation_rules_change_the_spoken_text_only() {
+        let host = TestHost::default();
+        let engine = Arc::new(SpyEngine(Mutex::new(Vec::new())));
+        let rules = vec![PronunciationRule::new("GIF", "jif"), PronunciationRule::new("New York", "Noo Yawk")];
+        let config = Config { match_language: false, rate: 1.0, volume: 0.0, voice: Some("tone".into()), profile: ResourceProfile::Balanced, pronunciations: rules };
+        let c = spawn(engine.clone(), config, host.clone());
+        c.send(request("A gif from New York. Gifts are not gifs."));
+        host.wait_for(Duration::from_secs(3), |s| s.status == PlaybackStatus::Playing || s.status == PlaybackStatus::Completed).expect("plays");
+        std::thread::sleep(Duration::from_millis(300));
+        let spoken = engine.0.lock().unwrap().clone();
+        assert_eq!(spoken, ["A jif from Noo Yawk.", "Gifts are not gifs."]);
+
+        // Replacing the rules applies to the next reading.
+        c.send(Command::SetPronunciations(Vec::new()));
+        c.send(request("A gif again."));
+        host.wait_for(Duration::from_secs(3), |s| s.session_id == 2 && s.status != PlaybackStatus::Buffering).expect("plays again");
+        std::thread::sleep(Duration::from_millis(300));
+        assert_eq!(engine.0.lock().unwrap().last().map(String::as_str), Some("A gif again."));
+        c.send(Command::Shutdown);
+    }
+
     #[test]
     #[ignore = "opens the default output device (silently)"]
     fn waiting_for_audio_shows_buffering_and_holds_the_position() {
         let host = TestHost::default();
         let engine: Arc<dyn Engine> = Arc::new(SlowEngine(Default::default()));
-        let c = spawn(engine, Config { match_language: false, rate: 1.3, volume: 0.0, voice: Some("tone".into()), profile: ResourceProfile::Balanced }, host.clone());
+        let c = spawn(engine, Config { match_language: false, rate: 1.3, volume: 0.0, voice: Some("tone".into()), profile: ResourceProfile::Balanced, pronunciations: Vec::new() }, host.clone());
         c.send(request("The first sentence is ready. The second one is slow. So is the third."));
         host.wait_for(Duration::from_secs(3), |s| s.status == PlaybackStatus::Playing).expect("plays");
 
@@ -1245,7 +1291,7 @@ mod tests {
     fn end_to_end_reading() {
         let host = TestHost::default();
         let engine: Arc<dyn Engine> = Arc::from(speakit_tts::system_engine());
-        let c = spawn(engine, Config { match_language: true, rate: 1.0, volume: 0.15, voice: None, profile: ResourceProfile::Balanced }, host.clone());
+        let c = spawn(engine, Config { match_language: true, rate: 1.0, volume: 0.15, voice: None, profile: ResourceProfile::Balanced, pronunciations: Vec::new() }, host.clone());
 
         c.send(request(TEXT));
         let first = host.wait_for(Duration::from_secs(5), |s| s.status == PlaybackStatus::Playing)
@@ -1342,7 +1388,7 @@ mod tests {
             model_file: installed.model_file.clone(), worker_bin, voices, threads: 4, parallel: 1, gpu, below_normal: true, model_rate: model.sample_rate,
         }))));
         let host = TestHost::default();
-        let c = spawn(registry.clone(), Config { match_language: true, rate: 1.0, volume: 0.15, voice: Some("kokoro:af_heart".into()), profile: ResourceProfile::Balanced }, host.clone());
+        let c = spawn(registry.clone(), Config { match_language: true, rate: 1.0, volume: 0.15, voice: Some("kokoro:af_heart".into()), profile: ResourceProfile::Balanced, pronunciations: Vec::new() }, host.clone());
 
         c.send(request(TEXT));
         let first = host.wait_for(Duration::from_secs(15), |s| s.status == PlaybackStatus::Playing).expect("plays");
@@ -1385,7 +1431,7 @@ mod tests {
             voices, threads: 4, below_normal: true, options: model.options.clone(), model_rate: model.sample_rate,
         }))));
         let host = TestHost::default();
-        let c = spawn(registry.clone(), Config { match_language: true, rate: 1.0, volume: 0.15, voice: Some("pocket-en:alba".into()), profile: ResourceProfile::Balanced }, host.clone());
+        let c = spawn(registry.clone(), Config { match_language: true, rate: 1.0, volume: 0.15, voice: Some("pocket-en:alba".into()), profile: ResourceProfile::Balanced, pronunciations: Vec::new() }, host.clone());
 
         c.send(request(TEXT));
         let first = host.wait_for(Duration::from_secs(15), |s| s.status == PlaybackStatus::Playing).expect("plays");

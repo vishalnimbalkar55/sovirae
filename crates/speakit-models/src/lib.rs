@@ -15,6 +15,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub use catalog::FeatureSpec;
 pub use catalog::{find, models, Artifact, Family, FileSpec, ModelSpec, VoiceSpec};
 
 #[derive(Debug, Error)]

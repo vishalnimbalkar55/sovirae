@@ -9,6 +9,7 @@ mod models;
 mod platform;
 mod settings;
 mod shortcuts;
+mod studio;
 mod tray;
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -32,6 +33,7 @@ pub struct AppState {
     pub shortcuts: shortcuts::ShortcutManager,
     pub playback_active: AtomicBool,
     pub bridge: bridge::Bridge,
+    pub studio: studio::Studio,
 }
 
 struct AppHost {
@@ -203,6 +205,7 @@ pub fn run() {
                     volume: settings.volume,
                     voice: settings.voice.clone(),
                     profile: settings.resource_profile,
+                    pronunciations: settings.pronunciations.clone(),
                 },
                 AppHost { app: handle.clone() },
             );
@@ -221,6 +224,7 @@ pub fn run() {
                 models: Default::default(),
                 playback_active: AtomicBool::new(false),
                 bridge: Default::default(),
+                studio: Default::default(),
             });
 
             tray::create(&handle)?;
@@ -286,6 +290,20 @@ pub fn run() {
             commands::bridge_revoke,
             commands::bridge_allow_again,
             commands::open_extension_folder,
+            studio::studio_list,
+            studio::studio_create,
+            studio::studio_get,
+            studio::studio_rename,
+            studio::studio_delete,
+            studio::studio_save_script,
+            studio::studio_select_version,
+            studio::studio_delete_version,
+            studio::studio_set_voice,
+            studio::studio_features,
+            studio::studio_generate,
+            studio::studio_cancel,
+            studio::studio_audio,
+            studio::studio_export,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Sovirae")

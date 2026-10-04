@@ -7,7 +7,7 @@
 
 use std::sync::OnceLock;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 const CATALOG_JSON: &str = include_str!("../catalog/models.json");
 
@@ -58,6 +58,20 @@ pub struct VoiceSpec {
     pub file: FileSpec,
 }
 
+/// A script marker the model itself understands, such as `[laugh]`
+/// for models trained with non-verbal tags. The Studio lists them and
+/// passes them through to the engine unchanged.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeatureSpec {
+    /// The word inside the brackets, e.g. `laugh`.
+    pub id: String,
+    pub label: String,
+    pub description: String,
+    /// How to write it in a script, e.g. `[laugh]`.
+    pub example: String,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelSpec {
@@ -85,6 +99,10 @@ pub struct ModelSpec {
     pub options: serde_json::Map<String, serde_json::Value>,
     pub artifacts: Vec<Artifact>,
     pub voices: Vec<VoiceSpec>,
+    /// Script markers this model honours (none for models that read plain
+    /// text; the Studio then offers only app-level markers such as pauses).
+    #[serde(default)]
+    pub features: Vec<FeatureSpec>,
 }
 
 impl ModelSpec {
@@ -182,18 +200,34 @@ mod tests {
             assert!(k.voices.iter().any(|v| v.id == id), "missing {id}");
         }
 
-        // Pocket TTS: English only (user decision), with all 27 voices and
-        // Kyutai's default voice first.
+        // Pocket TTS: every language Kyutai ships (all languages requested
+        // 2026-10-04), each with the same 27 voices, Kyutai's default voice
+        // first, and the language's own tokenizer, weights, and text rules.
         let pocket: Vec<_> = models.iter().filter(|m| m.family == Family::Pocket).collect();
-        assert_eq!(pocket.len(), 1);
+        let langs: Vec<&str> = pocket.iter().map(|m| m.voices[0].language.as_str()).collect();
+        assert_eq!(langs, ["en", "fr", "de", "es", "it", "pt", "nl"]);
         let en = find("pocket-tts-en").unwrap();
         assert_eq!(en.voice_prefix, "pocket-en");
-        assert_eq!(en.voices.len(), 27);
-        assert_eq!(en.voices[0].id, "alba");
-        assert!(en.voices.iter().all(|v| v.language == "en" && v.license.is_some()));
-        // Recordings from non-commercial datasets are marked as such.
-        for id in ["cosette", "jean"] {
-            assert_eq!(en.voices.iter().find(|v| v.id == id).unwrap().license.as_deref(), Some("CC-BY-NC-4.0"));
+        for m in &pocket {
+            let lang = &m.voices[0].language;
+            assert_eq!(m.voice_prefix, format!("pocket-{lang}"));
+            assert_eq!(m.voices.len(), 27, "{}", m.id);
+            assert_eq!(m.voices[0].id, "alba");
+            assert!(m.voices.iter().all(|v| &v.language == lang && v.license.is_some()), "{}", m.id);
+            assert!(m.files[0].path.contains("/tokenizer.json"), "{}", m.id);
+            // Each language has its own files: nothing is shared with English.
+            if m.id != en.id {
+                assert_ne!(m.artifacts[0].file.sha256, en.artifacts[0].file.sha256, "{}", m.id);
+                assert_ne!(m.files[0].sha256, en.files[0].sha256, "{}", m.id);
+                assert!(m.options.contains_key("replaceCharacters"), "{}: text rules", m.id);
+            }
+            // Recordings from non-commercial datasets are marked as such.
+            for id in ["cosette", "jean"] {
+                assert_eq!(m.voices.iter().find(|v| v.id == id).unwrap().license.as_deref(), Some("CC-BY-NC-4.0"));
+            }
         }
+        // Rules copied from pocket_tts/config/<language>.yaml.
+        assert_eq!(find("pocket-tts-fr").unwrap().options["removeSemicolons"], true);
+        assert_eq!(find("pocket-tts-es").unwrap().options["replaceCharacters"]["\u{bf}"], "");
     }
 }

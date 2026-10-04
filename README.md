@@ -104,6 +104,17 @@ Neural voice models are not bundled; download them in Sovirae › Voices.
 The build is ad-hoc signed, which is fine on the machine that built it. To
 share it, sign and notarize with an Apple Developer ID.
 
+## Studio
+
+The Studio screen turns a script into a downloadable recording. Create a
+project, paste a script, choose a model and voice for it, and generate the
+first part. Listen, accept, and the remaining paragraphs are generated.
+Scripts can use `[pause]` and `[pause 2s]`; a model that understands its own
+tags (listed under `features` in the catalog) shows them next to the editor,
+and "Copy prompt" produces a prompt for ChatGPT or Claude that only uses
+those markers. Projects and their WAV files live in the app data folder under
+`studio/`.
+
 ## Logs
 
 Warnings and errors (voice engine failures, GPU fallback reasons, download

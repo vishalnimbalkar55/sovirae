@@ -11,6 +11,9 @@ import type {
   Settings,
   ShortcutStatus,
   Snapshot,
+  StudioFeature,
+  StudioProject,
+  StudioSummary,
   Voice,
 } from "./types";
 
@@ -42,6 +45,21 @@ export const api = {
   bridgeRevoke: (id: string) => invoke<void>("bridge_revoke", { id }),
   bridgeAllowAgain: (id: string) => invoke<void>("bridge_allow_again", { id }),
   openExtensionFolder: () => invoke<void>("open_extension_folder"),
+  studioList: () => invoke<StudioSummary[]>("studio_list"),
+  studioCreate: (name: string) => invoke<StudioProject>("studio_create", { name }),
+  studioGet: (id: string) => invoke<StudioProject>("studio_get", { id }),
+  studioRename: (id: string, name: string) => invoke<StudioProject>("studio_rename", { id, name }),
+  studioDelete: (id: string) => invoke<void>("studio_delete", { id }),
+  studioSaveScript: (id: string, text: string, newVersion: boolean) =>
+    invoke<StudioProject>("studio_save_script", { id, text, newVersion }),
+  studioSelectVersion: (id: string, version: number) => invoke<StudioProject>("studio_select_version", { id, version }),
+  studioDeleteVersion: (id: string, version: number) => invoke<StudioProject>("studio_delete_version", { id, version }),
+  studioSetVoice: (id: string, voice: string) => invoke<StudioProject>("studio_set_voice", { id, voice }),
+  studioFeatures: (voice: string | null) => invoke<StudioFeature[]>("studio_features", { voice }),
+  studioGenerate: (id: string, scope: "preview" | "rest" | "all") => invoke<StudioProject>("studio_generate", { id, scope }),
+  studioCancel: (id: string) => invoke<void>("studio_cancel", { id }),
+  studioAudio: (id: string, paragraph: number) => invoke<ArrayBuffer>("studio_audio", { id, paragraph }),
+  studioExport: (id: string, scope: "preview" | "all") => invoke<string | null>("studio_export", { id, scope }),
 };
 
 type Events = {
@@ -54,6 +72,7 @@ type Events = {
   "player-collapse": null;
   model: ModelView;
   bridge: BridgeStatus;
+  studio: StudioProject;
 };
 
 export function on<K extends keyof Events>(event: K, handler: (payload: Events[K]) => void): () => void {

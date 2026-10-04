@@ -96,6 +96,15 @@ export interface Settings {
   chromeBridge: boolean;
   pairedExtensions: string[];
   matchPageLanguage: boolean;
+  /** "Say this as that" rules applied to the text sent to the voice. */
+  pronunciations: PronunciationRule[];
+}
+
+export interface PronunciationRule {
+  /** Written form, matched as whole words ignoring case. */
+  from: string;
+  /** Spoken form; empty skips the word. */
+  to: string;
 }
 
 export interface BridgeStatus {
@@ -157,4 +166,68 @@ export interface ModelView {
   secondsLeft: number | null;
   error: string | null;
   missing: string[];
+}
+
+/* ── Studio: script projects turned into downloadable audio ── */
+
+export interface StudioVersion {
+  id: number;
+  created: number;
+  text: string;
+}
+
+export type ParagraphStatus = "pending" | "generating" | "ready" | "failed";
+
+export interface StudioParagraph {
+  index: number;
+  /** The paragraph as generated; differs from the script once edited. */
+  text: string;
+  preview: string;
+  chars: number;
+  status: ParagraphStatus;
+  file: string | null;
+  durationMs: number;
+  skippedMarkers: number;
+  error: string | null;
+}
+
+export interface StudioGenerated {
+  version: number;
+  voice: string;
+  paragraphs: StudioParagraph[];
+  previewCount: number;
+  accepted: boolean;
+  running: boolean;
+  error: string | null;
+}
+
+export interface StudioProject {
+  id: string;
+  name: string;
+  created: number;
+  updated: number;
+  voice: string | null;
+  versions: StudioVersion[];
+  current: number;
+  generated: StudioGenerated | null;
+}
+
+export interface StudioSummary {
+  id: string;
+  name: string;
+  updated: number;
+  voice: string | null;
+  ready: number;
+  total: number;
+  running: boolean;
+}
+
+export interface StudioFeature {
+  id: string;
+  label: string;
+  description: string;
+  example: string;
+  source: "app" | "model";
+  /** Spoken as ordinary words the voice can say, not a true expression. */
+  approximate: boolean;
 }

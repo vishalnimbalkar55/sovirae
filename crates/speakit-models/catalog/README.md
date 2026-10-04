@@ -22,6 +22,12 @@ on the Voices screen with Download, Use it, and Delete.
 6. Run `cargo test -p speakit-models`; it rejects duplicate IDs or prefixes,
    unpinned revisions, and malformed hashes.
 
+7. If the model understands script markers of its own (for example
+   `[laugh]` in models trained with non-verbal tags), list them in
+   `features` (`id`, `label`, `description`, `example`). The Studio shows
+   them and passes them to the worker unchanged; every other bracketed
+   marker is removed before synthesis.
+
 Record the model's license and link it in `licenseUrl`. Do not add a model
 before its engine license and voice licenses are reviewed (spec §7.1).
 
@@ -30,12 +36,14 @@ before its engine license and voice licenses are reviewed (spec §7.1).
 `pocket-tts-en` is Kyutai's English 6-layer model (`languages/english`, the
 same weights as `english_2026-09`) from
 `kyutai/pocket-tts-without-voice-cloning` (ungated, CC-BY-4.0), with its
-tokenizer and all 27 predefined voices. Only English is listed (user
-decision, 2026-09-26). Kyutai also ships French, German, Spanish, Italian,
-Portuguese, and Dutch; the worker already supports them. Adding one takes
-a catalog entry whose `options` copy the text rules (`remove_semicolons`,
-`replace_characters`) from `pocket_tts/config/<language>.yaml` in
-github.com/kyutai-labs/pocket-tts.
+tokenizer and all 27 predefined voices. `pocket-tts-fr`, `-de`, `-es`,
+`-it`, `-pt`, and `-nl` (added 2026-10-04) are Kyutai's French, German,
+Spanish, Italian, Portuguese, and Dutch 6-layer models from the same
+revision, each with its own tokenizer and the same 27 voices. Each entry's
+`options` carry the language's text rules (`removeSemicolons`,
+`replaceCharacters`) copied from `pocket_tts/config/<language>.yaml` in
+github.com/kyutai-labs/pocket-tts; the worker applies them before
+tokenizing. The 24-layer variants in the repository are not listed.
 
 Voice genders are set only for the VCTK speakers, whose dataset documents
 them. Voice licenses come from the kyutai/tts-voices card and the

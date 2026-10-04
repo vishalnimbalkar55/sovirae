@@ -3,6 +3,7 @@
 // states can be reviewed. Never included in a Tauri build path at runtime.
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { emit } from "@tauri-apps/api/event";
+import { mockStudio } from "./devMockStudio";
 
 const SAMPLE = `Local speech synthesis has improved quickly. A compact model can now run on an ordinary laptop and still sound natural enough for long reading sessions.
 
@@ -18,6 +19,7 @@ export function installDevMock() {
     hotkeysPaused: false, sentenceSnap: false, followReading: true, playerTopmost: true,
     playerLine: params.get("line") ?? "wave",
     chromeBridge: true, pairedExtensions: [] as string[], matchPageLanguage: true,
+    pronunciations: [{ from: "Sovirae", to: "so-vee-ray" }, { from: "GIF", to: "jif" }],
   };
   const segments: [number, number, number, number, boolean][] = [];
   const bytes = new TextEncoder();
@@ -135,7 +137,7 @@ export function installDevMock() {
             downloading: null, progress: null, bytesPerSecond: null, secondsLeft: null, error: null, missing: [],
           },
         ];
-        default: return null;
+        default: return mockStudio(cmd, args as Record<string, unknown>);
       }
     },
     { shouldMockEvents: true },

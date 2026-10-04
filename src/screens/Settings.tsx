@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import type { AppModel } from "../App";
 import { api } from "../lib/api";
-import type { PlayerLine, ProcessorStatus, ResourceProfile, Settings } from "../lib/types";
+import type { PlayerLine, ProcessorStatus, PronunciationRule, ResourceProfile, Settings } from "../lib/types";
 import { Row, Section, Segmented, Slider, Switch } from "../lib/ui";
+import { Close } from "../lib/icons";
 
 const PROFILE_HINT: Record<ResourceProfile, string> = {
   eco: "Prepares 8 seconds ahead with up to 32 MB of audio. A downloaded voice leaves memory after 2 idle minutes. Lightest on battery.",
@@ -78,6 +79,10 @@ export default function SettingsScreen({ app }: { app: AppModel }) {
         </div>
       </Section>
 
+      <Section title="Pronunciation" description="Say a word or phrase differently. Rules change only what the voice says; the text on screen keeps its spelling.">
+        <PronunciationEditor rules={s.pronunciations} onChange={(pronunciations) => set({ pronunciations })} />
+      </Section>
+
       <Section title="Performance" description="How much work Sovirae does ahead of the voice.">
         <div className="group">
           <Row label="Resource use" hint={PROFILE_HINT[s.resourceProfile]}>
@@ -113,7 +118,7 @@ export default function SettingsScreen({ app }: { app: AppModel }) {
 
       <Section title="Privacy">
         <div className="group">
-          <Row label="Reading history" hint="Text you read is never written to disk">
+          <Row label="Reading history" hint="Text you read is never written to disk. Studio projects and their audio are saved on this device until you delete them.">
             <span className="pill">Off</span>
           </Row>
           <Row label="Audio cache" hint="Held in memory for the current reading only">
@@ -238,6 +243,73 @@ function LinePicker({ value, onChange }: { value: PlayerLine; onChange: (v: Play
           <span>{name}</span>
         </button>
       ))}
+    </div>
+  );
+}
+
+/** Rows of "written as → spoken as". Whole-word, case-insensitive matches; an
+ *  empty spoken form skips the word. */
+function PronunciationEditor({ rules, onChange }: {
+  rules: PronunciationRule[];
+  onChange: (rules: PronunciationRule[]) => void;
+}) {
+  const [draft, setDraft] = useState<PronunciationRule[]>(rules);
+  const [fresh, setFresh] = useState<PronunciationRule>({ from: "", to: "" });
+  const fromRef = useRef<HTMLInputElement>(null);
+  // Follow the saved rules unless the user is mid-edit on a row.
+  useEffect(() => setDraft(rules), [rules]);
+
+  const clean = (r: PronunciationRule) => ({ from: r.from.trim().replace(/\s+/g, " "), to: r.to.trim().replace(/\s+/g, " ") });
+  const same = (a: PronunciationRule[], b: PronunciationRule[]) =>
+    a.length === b.length && a.every((r, i) => r.from === b[i].from && r.to === b[i].to);
+  const commit = (next: PronunciationRule[]) => {
+    const cleaned = next.map(clean).filter((r) => r.from);
+    setDraft(cleaned);
+    if (!same(cleaned, rules)) onChange(cleaned);
+  };
+  const add = () => {
+    const r = clean(fresh);
+    if (!r.from) return;
+    const exists = draft.some((d) => d.from.toLowerCase() === r.from.toLowerCase());
+    commit(exists ? draft.map((d) => (d.from.toLowerCase() === r.from.toLowerCase() ? r : d)) : [...draft, r]);
+    setFresh({ from: "", to: "" });
+    fromRef.current?.focus();
+  };
+  const edit = (i: number, patch: Partial<PronunciationRule>) =>
+    setDraft((d) => d.map((r, k) => (k === i ? { ...r, ...patch } : r)));
+  const remove = (i: number) => commit(draft.filter((_, k) => k !== i));
+  const onEnter = (e: KeyboardEvent<HTMLInputElement>, action: () => void) => {
+    if (e.key === "Enter") { e.preventDefault(); action(); }
+  };
+
+  return (
+    <div className="group pron">
+      {draft.length > 0 && (
+        <div className="pron-head" aria-hidden="true">
+          <span>Written as</span><span /><span>Spoken as</span><span />
+        </div>
+      )}
+      {draft.map((r, i) => (
+        <div className="pron-row" key={i}>
+          <input aria-label={`Written as, rule ${i + 1}`} value={r.from} spellCheck={false}
+            onChange={(e) => edit(i, { from: e.target.value })} onBlur={() => commit(draft)}
+            onKeyDown={(e) => onEnter(e, () => commit(draft))} />
+          <span className="pron-arrow" aria-hidden="true">→</span>
+          <input aria-label={`Spoken as, rule ${i + 1}`} value={r.to} spellCheck={false} placeholder="(skip)"
+            onChange={(e) => edit(i, { to: e.target.value })} onBlur={() => commit(draft)}
+            onKeyDown={(e) => onEnter(e, () => commit(draft))} />
+          <button className="btn ghost small icon" aria-label={`Remove rule for ${r.from}`} onClick={() => remove(i)}><Close /></button>
+        </div>
+      ))}
+      <div className="pron-row pron-new">
+        <input ref={fromRef} aria-label="New rule, written as" placeholder="Written as, e.g. GIF" value={fresh.from} spellCheck={false}
+          onChange={(e) => setFresh({ ...fresh, from: e.target.value })} onKeyDown={(e) => onEnter(e, add)} />
+        <span className="pron-arrow" aria-hidden="true">→</span>
+        <input aria-label="New rule, spoken as" placeholder="Spoken as, e.g. jif" value={fresh.to} spellCheck={false}
+          onChange={(e) => setFresh({ ...fresh, to: e.target.value })} onKeyDown={(e) => onEnter(e, add)} />
+        <button className="btn small" onClick={add} disabled={!fresh.from.trim()}>Add</button>
+      </div>
+      <p className="hint pron-hint">Matches whole words in any case. Leave “Spoken as” empty to skip the word. Phrases work too: “New York”.</p>
     </div>
   );
 }

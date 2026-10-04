@@ -28,10 +28,12 @@ speakit-audio.workspace = true
 speakit-tts.workspace = true
 speakit-models.workspace = true
 speakit-protocol.workspace = true
+hound.workspace = true
 libc = "0.2"
 
 [dev-dependencies]
 speakit-models.workspace = true
+tauri = { version = "2", features = ["test"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-app-kit = { version = "0.3", features = ["NSWindow", "NSResponder"] }

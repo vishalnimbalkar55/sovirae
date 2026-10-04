@@ -87,3 +87,18 @@ export const Chevron = (p: P) => (
 export const Download = (p: P) => (
   <svg {...base(p)}><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14" /></svg>
 );
+export const StudioIcon = (p: P) => (
+  <svg {...base(p)}><path d="M4 5.5h16M4 10h10M4 14.5h16M4 19h7" /><circle cx="18" cy="11" r="2.2" /></svg>
+);
+export const Copy = (p: P) => (
+  <svg {...base(p)}><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></svg>
+);
+export const Trash = (p: P) => (
+  <svg {...base(p)}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
+);
+export const Stop = (p: P) => (
+  <svg {...base(p)}><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none" /></svg>
+);
+export const Plus = (p: P) => (
+  <svg {...base(p)}><path d="M12 5v14M5 12h14" /></svg>
+);

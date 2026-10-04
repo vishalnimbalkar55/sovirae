@@ -2,17 +2,20 @@ import { useEffect, useState } from "react";
 import { api, on } from "./lib/api";
 import { voiceLabel } from "./lib/format";
 import { useAppState, useTheme } from "./lib/useApp";
-import { GearIcon, KeyIcon, Mark, Pause, Play, PuzzleIcon, ReadIcon, VoiceIcon } from "./lib/icons";
+import { confirmLeave } from "./lib/navGuard";
+import { GearIcon, KeyIcon, Mark, Pause, Play, PuzzleIcon, ReadIcon, StudioIcon, VoiceIcon } from "./lib/icons";
 import { ACTIVE } from "./lib/types";
 import ReadScreen from "./screens/Read";
 import VoicesScreen from "./screens/Voices";
 import ShortcutsScreen from "./screens/Shortcuts";
 import ExtensionScreen from "./screens/Extension";
 import SettingsScreen from "./screens/Settings";
+import StudioScreen from "./screens/Studio";
 
 const SCREENS = [
   { id: "read", label: "Read", Icon: ReadIcon },
   { id: "voices", label: "Voices", Icon: VoiceIcon },
+  { id: "studio", label: "Studio", Icon: StudioIcon },
   { id: "shortcuts", label: "Shortcuts", Icon: KeyIcon },
   { id: "extension", label: "Extension", Icon: PuzzleIcon },
   { id: "settings", label: "Settings", Icon: GearIcon },
@@ -21,7 +24,12 @@ type ScreenId = (typeof SCREENS)[number]["id"];
 
 export default function App() {
   const app = useAppState();
-  const [screen, setScreen] = useState<ScreenId>("read");
+  const [screen, setScreenNow] = useState<ScreenId>("read");
+  // A screen with unsaved work (Studio) may ask before we leave it.
+  const setScreen = (next: ScreenId) => {
+    if (next === screen) return;
+    confirmLeave().then((ok) => ok && setScreenNow(next));
+  };
   useTheme(app.settings?.theme);
   // Lets CSS drop the macOS title-bar spacing on Windows and Linux.
   useEffect(() => {
@@ -95,6 +103,8 @@ export default function App() {
           <ReadScreen app={app} onChangeVoice={() => setScreen("voices")} />
         ) : screen === "voices" ? (
           <VoicesScreen app={app} />
+        ) : screen === "studio" ? (
+          <StudioScreen app={app} />
         ) : screen === "shortcuts" ? (
           <ShortcutsScreen app={app} />
         ) : screen === "extension" ? (

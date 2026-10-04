@@ -4546,6 +4546,7 @@ name = "sovirae"
 version = "0.1.0"
 dependencies = [
  "arboard",
+ "hound",
  "libc",
  "log",
  "objc2-app-kit",
