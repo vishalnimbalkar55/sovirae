@@ -37,14 +37,19 @@ impl Drop for WorkerProc {
 }
 
 impl WorkerProc {
-    /// Starts `cmd` and waits until the worker reports it is ready.
-    pub fn spawn(mut cmd: Command, name: &str, cancel: &CancelToken, timeout: Duration) -> Result<Self, TtsError> {
+    /// Starts `cmd` and waits until the worker reports it is ready. With
+    /// `below_normal` the process runs at reduced CPU priority (spec §8.2),
+    /// so foreground apps stay responsive while a sentence is generated.
+    pub fn spawn(mut cmd: Command, name: &str, cancel: &CancelToken, timeout: Duration, below_normal: bool) -> Result<Self, TtsError> {
         let mut child = crate::no_console(&mut cmd)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()
             .map_err(|e| TtsError::Engine(format!("the voice worker could not start: {e}")))?;
+        if below_normal {
+            lower_priority(&child);
+        }
         let stdin = child.stdin.take().expect("piped stdin");
         let mut stdout = child.stdout.take().expect("piped stdout");
         let (tx, frames) = mpsc::channel();
@@ -110,7 +115,50 @@ impl WorkerProc {
     }
 }
 
+/// Lowers a child's scheduling priority. Best effort: a failure leaves it
+/// at normal priority.
+#[cfg(unix)]
+fn lower_priority(child: &Child) {
+    // nice 10: clearly below interactive work, still well above idle.
+    // SAFETY: plain syscall on a process ID this process just created.
+    let r = unsafe { libc::setpriority(libc::PRIO_PROCESS, child.id() as libc::id_t, 10) };
+    if r != 0 {
+        log::warn!("could not lower worker priority: {}", std::io::Error::last_os_error());
+    }
+}
+
+#[cfg(windows)]
+fn lower_priority(child: &Child) {
+    use std::os::windows::io::AsRawHandle;
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::Threading::{SetPriorityClass, BELOW_NORMAL_PRIORITY_CLASS};
+    // SAFETY: the handle belongs to `child`, which outlives this call.
+    if let Err(e) = unsafe { SetPriorityClass(HANDLE(child.as_raw_handle()), BELOW_NORMAL_PRIORITY_CLASS) } {
+        log::warn!("could not lower worker priority: {e}");
+    }
+}
+
+#[cfg(not(any(unix, windows)))]
+fn lower_priority(_: &Child) {}
+
 /// Decodes a status-0 payload.
 pub(crate) fn samples(payload: &[u8]) -> Vec<f32> {
     payload.chunks_exact(4).map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]])).collect()
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lowers_the_child_priority() {
+        let child = Command::new("sleep").arg("5").spawn().unwrap();
+        lower_priority(&child);
+        // SAFETY: reading the priority of a live child process.
+        let nice = unsafe { libc::getpriority(libc::PRIO_PROCESS, child.id() as libc::id_t) };
+        let mut child = child;
+        let _ = child.kill();
+        let _ = child.wait();
+        assert_eq!(nice, 10);
+    }
 }

@@ -37,6 +37,8 @@ pub struct PocketConfig {
     pub worker_bin: PathBuf,
     pub voices: Vec<PocketVoice>,
     pub threads: usize,
+    /// Run the worker at reduced CPU priority (Eco and Balanced, spec §8.2).
+    pub below_normal: bool,
     /// The catalog's per-language text rules and sampling settings.
     pub options: serde_json::Map<String, serde_json::Value>,
     pub model_rate: u32,
@@ -69,7 +71,7 @@ impl PocketEngine {
             .arg(c.threads.to_string())
             .arg("--options")
             .arg(serde_json::Value::Object(c.options).to_string());
-        WorkerProc::spawn(cmd, "pocket", cancel, LOAD_TIMEOUT)
+        WorkerProc::spawn(cmd, "pocket", cancel, LOAD_TIMEOUT, c.below_normal)
     }
 
     /// Runs one request through the worker, starting it if needed, and
@@ -162,6 +164,16 @@ impl Engine for PocketEngine {
             self.unload();
         }
     }
+
+    /// Takes effect on the next worker start.
+    fn set_below_normal(&self, below_normal: bool) {
+        let mut c = self.config.lock().unwrap();
+        if c.below_normal != below_normal {
+            c.below_normal = below_normal;
+            drop(c);
+            self.unload();
+        }
+    }
 }
 
 #[cfg(all(test, unix))]
@@ -221,6 +233,7 @@ for line in sys.stdin:
             worker_bin: fake_worker()?,
             voices: vec![voice("alba", alba), voice("bad", dir.join("bad")), voice("gone", dir.join("gone.bin"))],
             threads: 1,
+            below_normal: true,
             options,
             model_rate: 24_000,
         });

@@ -56,6 +56,7 @@ fn main() {
         worker_bin,
         voices,
         threads,
+        below_normal: false,
         options: model.options.clone(),
         model_rate: model.sample_rate,
     });

@@ -57,6 +57,7 @@ fn main() {
         threads,
         parallel: 1,
         gpu,
+        below_normal: false,
         model_rate: model.sample_rate,
     });
     assert!(engine.has_phonemizer(), "espeak-ng not found");

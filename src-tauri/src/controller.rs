@@ -1339,7 +1339,7 @@ mod tests {
         let registry = Arc::new(speakit_tts::Registry::new(speakit_tts::system_engine()));
         registry.set_model(&model.voice_prefix, Some(Arc::new(KokoroEngine::new(KokoroConfig {
             model_id: model.id.clone(), model_name: model.name.clone(), voice_prefix: model.voice_prefix.clone(),
-            model_file: installed.model_file.clone(), worker_bin, voices, threads: 4, parallel: 1, gpu, model_rate: model.sample_rate,
+            model_file: installed.model_file.clone(), worker_bin, voices, threads: 4, parallel: 1, gpu, below_normal: true, model_rate: model.sample_rate,
         }))));
         let host = TestHost::default();
         let c = spawn(registry.clone(), Config { match_language: true, rate: 1.0, volume: 0.15, voice: Some("kokoro:af_heart".into()), profile: ResourceProfile::Balanced }, host.clone());
@@ -1382,7 +1382,7 @@ mod tests {
         registry.set_model(&model.voice_prefix, Some(Arc::new(PocketEngine::new(PocketConfig {
             model_id: model.id.clone(), model_name: model.name.clone(), voice_prefix: model.voice_prefix.clone(),
             model_file: installed.model_file.clone(), tokenizer_file: installed.support_file(&model.files[0]), worker_bin,
-            voices, threads: 4, options: model.options.clone(), model_rate: model.sample_rate,
+            voices, threads: 4, below_normal: true, options: model.options.clone(), model_rate: model.sample_rate,
         }))));
         let host = TestHost::default();
         let c = spawn(registry.clone(), Config { match_language: true, rate: 1.0, volume: 0.15, voice: Some("pocket-en:alba".into()), profile: ResourceProfile::Balanced }, host.clone());
@@ -1423,7 +1423,7 @@ mod tests {
         let registry = speakit_tts::Registry::new(speakit_tts::system_engine());
         registry.set_model(&model.voice_prefix, Some(Arc::new(KokoroEngine::new(KokoroConfig {
             model_id: model.id.clone(), model_name: model.name.clone(), voice_prefix: model.voice_prefix.clone(),
-            model_file: installed.model_file.clone(), worker_bin: "unused".into(), voices, threads: 1, parallel: 1, gpu: false, model_rate: model.sample_rate,
+            model_file: installed.model_file.clone(), worker_bin: "unused".into(), voices, threads: 1, parallel: 1, gpu: false, below_normal: true, model_rate: model.sample_rate,
         }))));
         let listed: Vec<String> = registry.voices().unwrap().into_iter()
             .filter(|v| v.model == model.id).map(|v| format!("{} ({}, {})", v.name, v.language, v.gender.unwrap_or_default())).collect();

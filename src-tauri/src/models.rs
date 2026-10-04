@@ -141,6 +141,12 @@ pub fn threads_for(profile: ResourceProfile) -> usize {
     }
 }
 
+/// Eco and Balanced run workers below normal priority so foreground apps
+/// stay responsive (spec §8.2); Performance competes as an equal.
+pub fn below_normal_for(profile: ResourceProfile) -> bool {
+    profile != ResourceProfile::Performance
+}
+
 /// Segments generated at once. Measured on a 12-thread i5-1334U with
 /// Kokoro: 1 worker × 11 threads kept up with 0.64× speed, 3 × 3 with 1.02×.
 pub fn parallel_for(profile: ResourceProfile) -> usize {
@@ -189,6 +195,7 @@ fn engine_for(model: &ModelSpec, installed: &Installed, profile: ResourceProfile
                 threads: threads_for(profile),
                 parallel: parallel_for(profile),
                 gpu: processor == Processor::Gpu,
+                below_normal: below_normal_for(profile),
                 model_rate: model.sample_rate,
             })))
         }
@@ -213,6 +220,7 @@ fn engine_for(model: &ModelSpec, installed: &Installed, profile: ResourceProfile
                 worker_bin: worker_bin(worker_for(model.family))?,
                 voices,
                 threads: threads_for(profile),
+                below_normal: below_normal_for(profile),
                 options: model.options.clone(),
                 model_rate: model.sample_rate,
             })))

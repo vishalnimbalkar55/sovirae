@@ -181,6 +181,7 @@ pub fn update_settings(app: AppHandle, state: State<'_, AppState>, patch: Value)
         c.send(Command::SetProfile(next.resource_profile));
         state.engine.set_threads(crate::models::threads_for(next.resource_profile));
         state.engine.set_parallel(crate::models::parallel_for(next.resource_profile));
+        state.engine.set_below_normal(crate::models::below_normal_for(next.resource_profile));
     }
     if next.processor != before.processor {
         state.engine.set_gpu(next.processor == crate::settings::Processor::Gpu);

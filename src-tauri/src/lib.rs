@@ -172,6 +172,23 @@ pub fn run() {
         ))
         .plugin(shortcuts::plugin())
         .plugin(tauri_plugin_dialog::init())
+        // Diagnostics (spec §14): warnings and errors from the engines,
+        // downloads, and the bridge go to the app's log directory
+        // (Logs/com.sovirae.desktop on macOS, AppData\Local\...\logs on
+        // Windows), capped so the file never grows unbounded.
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir { file_name: Some("sovirae".into()) }),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stderr),
+                ])
+                .level(log::LevelFilter::Info)
+                .level_for("tao", log::LevelFilter::Warn)
+                .level_for("wry", log::LevelFilter::Warn)
+                .max_file_size(2 << 20)
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
+                .build(),
+        )
         .setup(|app| {
             let handle = app.handle().clone();
             let store = Store::new(app.path().app_config_dir()?);

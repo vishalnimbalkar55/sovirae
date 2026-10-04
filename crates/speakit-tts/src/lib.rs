@@ -93,6 +93,9 @@ pub trait Engine: Send + Sync {
     fn unload(&self) {}
     /// Applies an inference thread budget (spec §8.2), where supported.
     fn set_threads(&self, _threads: usize) {}
+    /// Runs inference workers at reduced CPU priority (spec §8.2), where
+    /// supported; takes effect on the next worker start.
+    fn set_below_normal(&self, _below_normal: bool) {}
     /// How many `synthesize` calls for `voice` may run at once. Engines that
     /// serialize internally keep the default of one.
     fn max_parallel(&self, _voice: &str) -> usize {
@@ -201,6 +204,12 @@ impl Engine for Registry {
     fn set_threads(&self, threads: usize) {
         for m in self.all_models() {
             m.set_threads(threads);
+        }
+    }
+
+    fn set_below_normal(&self, below_normal: bool) {
+        for m in self.all_models() {
+            m.set_below_normal(below_normal);
         }
     }
 

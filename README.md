@@ -104,6 +104,14 @@ Neural voice models are not bundled; download them in Sovirae › Voices.
 The build is ad-hoc signed, which is fine on the machine that built it. To
 share it, sign and notarize with an Apple Developer ID.
 
+## Logs
+
+Warnings and errors (voice engine failures, GPU fallback reasons, download
+and bridge problems) are written to `sovirae.log` in the app's log folder:
+`~/Library/Logs/com.sovirae.desktop/` on macOS and
+`%LOCALAPPDATA%\com.sovirae.desktop\logs\` on Windows. The file is capped
+at 2 MB and one previous copy is kept.
+
 ## Everyday commands
 
 | Task | Command |

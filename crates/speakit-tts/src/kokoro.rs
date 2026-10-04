@@ -54,6 +54,8 @@ pub struct KokoroConfig {
     pub parallel: usize,
     /// Ask the worker for the GPU provider (WebGPU on Apple Silicon, CUDA on Windows).
     pub gpu: bool,
+    /// Run workers at reduced CPU priority (Eco and Balanced, spec §8.2).
+    pub below_normal: bool,
     pub model_rate: u32,
 }
 
@@ -118,7 +120,7 @@ impl KokoroEngine {
             .arg(c.threads.to_string())
             .arg("--device")
             .arg(if gpu { "gpu" } else { "cpu" });
-        let proc = WorkerProc::spawn(cmd, "kokoro", cancel, LOAD_TIMEOUT)?;
+        let proc = WorkerProc::spawn(cmd, "kokoro", cancel, LOAD_TIMEOUT, c.below_normal)?;
         *self.device.lock().unwrap() = proc.device;
         Ok(proc)
     }
@@ -278,6 +280,16 @@ impl Engine for KokoroEngine {
             self.unload();
         }
     }
+
+    /// Takes effect on the next worker start.
+    fn set_below_normal(&self, below_normal: bool) {
+        let mut c = self.config.lock().unwrap();
+        if c.below_normal != below_normal {
+            c.below_normal = below_normal;
+            drop(c);
+            self.unload();
+        }
+    }
 }
 
 #[cfg(all(test, unix))]
@@ -332,6 +344,7 @@ for line in sys.stdin:
             threads: 1,
             parallel: 1,
             gpu: true,
+            below_normal: true,
             model_rate: 24_000,
         });
         // Phonemes come from espeak-ng before the worker is involved.
