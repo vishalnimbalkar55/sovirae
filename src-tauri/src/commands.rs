@@ -152,7 +152,15 @@ pub fn update_settings(app: AppHandle, state: State<'_, AppState>, patch: Value)
 
     if next.start_at_login != before.start_at_login {
         let al = app.autolaunch();
-        let r = if next.start_at_login { al.enable() } else { al.disable() };
+        let r = if !next.start_at_login {
+            al.disable()
+        } else if crate::login_item_allowed() {
+            al.enable()
+        } else {
+            // Saved only; the installed app registers itself when it starts.
+            log::info!("start at login saved; this build is not registered as the login item");
+            Ok(())
+        };
         if let Err(e) = r {
             return Err(format!("Start at login could not be changed: {e}"));
         }

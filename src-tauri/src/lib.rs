@@ -147,6 +147,28 @@ pub(crate) fn clamp_player<R: Runtime>(app: &AppHandle<R>, w: &WebviewWindow<R>)
     }
 }
 
+/// Whether this executable may be registered to start at login. Only an
+/// installed release build qualifies: a development build loads its page
+/// from the Vite dev server, which is not running after a restart (a blank
+/// window), and a copy run from a disk image or a translocated path goes away.
+pub(crate) fn login_item_allowed() -> bool {
+    if cfg!(debug_assertions) {
+        return false;
+    }
+    let Ok(exe) = std::env::current_exe() else { return false };
+    let exe = exe.to_string_lossy();
+    !(exe.starts_with("/Volumes/") || exe.contains("/AppTranslocation/"))
+}
+
+/// The login item stores the path of whichever build enabled it. Rewriting
+/// it on each launch of an installed build keeps it pointing at that build.
+fn sync_login_item<R: Runtime>(app: &AppHandle<R>) {
+    use tauri_plugin_autostart::ManagerExt;
+    if let Err(e) = app.autolaunch().enable() {
+        log::warn!("start at login could not be refreshed: {e}");
+    }
+}
+
 pub(crate) fn show_main<R: Runtime>(app: &AppHandle<R>, screen: Option<&str>) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.unminimize();
@@ -218,6 +240,9 @@ pub fn run() {
             let start_hidden = (settings.start_minimized && std::env::args().any(|a| a == "--minimized"))
                 || std::env::args().any(|a| a == "--background");
             let topmost = settings.player_topmost;
+            if settings.start_at_login && login_item_allowed() {
+                sync_login_item(&handle);
+            }
             app.manage(AppState {
                 controller,
                 engine,

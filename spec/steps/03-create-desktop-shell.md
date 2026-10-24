@@ -24,6 +24,10 @@
 
 - Blank main window reported after a restart (not reproduced in 8 launches). The main window is now shown only after its page finishes loading, with a 2.5 s fallback that shows it anyway and logs a warning. Page loads, a dead WebKit content process (reloaded automatically), and uncaught UI errors are written to the log; both windows render a "Something went wrong" panel with Reload instead of a blank page.
 
+## Progress — 2026-10-24
+
+- Blank window after a restart, found: the login item (`~/Library/LaunchAgents/Sovirae.plist`) still started an old development binary (`target/debug/speakit`), which loads its page from the Vite dev server that is not running at login. Opening the app by hand started the installed build, so it worked. Development builds, and copies run from a disk image or a translocated path, no longer register as the login item (the setting is still saved). An installed release build rewrites the login item to its own path on every launch while Start at login is on.
+
 ## Relevant requirements
 
 - [4. Screen-by-screen behavior](../chunks/04-screens-and-settings.md)
