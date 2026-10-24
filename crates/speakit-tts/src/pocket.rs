@@ -186,6 +186,13 @@ mod tests {
     /// request back as audio: one sample per character of text, and
     /// fails for a voice file named `bad`.
     fn fake_worker() -> Option<PathBuf> {
+        // Written once per run: rewriting it while another test's worker
+        // starts from it truncates the script under that worker.
+        static PATH: std::sync::OnceLock<Option<PathBuf>> = std::sync::OnceLock::new();
+        PATH.get_or_init(write_fake_worker).clone()
+    }
+
+    fn write_fake_worker() -> Option<PathBuf> {
         std::process::Command::new("python3").arg("--version").output().ok()?;
         let path = std::env::temp_dir().join(format!("speakit-fake-pocket-{}.py", std::process::id()));
         let script = r#"#!/usr/bin/env python3
