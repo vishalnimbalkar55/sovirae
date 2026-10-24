@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sovirae",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Read selected text or any part of a page aloud with Sovirae's local voices.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtKQbYpsPQ35SPyxGfCMHYfqdfVjupN+DTrG8HQnj5ufqQ+YVX5WkLytLz2+c/npAML9GrmGCuYXFuKEeV5KilHZ+pcYGgS8tXWSbO9n2z5uaskwQvNR4nHX4w1QBICbTKSbEZAnt/+Y93V2r+i7PO6wBDUC1WsIqIfsPfgvURgehAF8a5Xtdswj6ongbvpNeNc4IXVJYebyAf0opl7Y84bl0RGmX86b2zmJoFXf8NSqeeUGwbtWM2fBUciXn7kJWQgiFVVlHSGgB38PzCaRwZivtiq8kKAYmAGllijDgsLsAC28usMG77AQ1vfhtGHHCoxH0bgzd70h8la5jSDiiywIDAQAB",
   "minimum_chrome_version": "116",

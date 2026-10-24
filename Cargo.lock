@@ -4543,7 +4543,7 @@ dependencies = [
 
 [[package]]
 name = "sovirae"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "arboard",
  "hound",
@@ -4570,7 +4570,7 @@ dependencies = [
 
 [[package]]
 name = "sovirae-kokoro-worker"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ort",
  "serde",
@@ -4579,7 +4579,7 @@ dependencies = [
 
 [[package]]
 name = "sovirae-native-host"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
  "speakit-protocol",
@@ -4588,7 +4588,7 @@ dependencies = [
 
 [[package]]
 name = "sovirae-pocket-worker"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "candle-core",
  "candle-nn",
@@ -4599,7 +4599,7 @@ dependencies = [
 
 [[package]]
 name = "speakit-audio"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "cpal",
  "log",
@@ -4609,7 +4609,7 @@ dependencies = [
 
 [[package]]
 name = "speakit-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
@@ -4618,7 +4618,7 @@ dependencies = [
 
 [[package]]
 name = "speakit-models"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
  "log",
@@ -4632,7 +4632,7 @@ dependencies = [
 
 [[package]]
 name = "speakit-protocol"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -4641,7 +4641,7 @@ dependencies = [
 
 [[package]]
 name = "speakit-tts"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "hound",
  "libc",
